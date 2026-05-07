@@ -1,0 +1,96 @@
+{
+  "diff_signal": {
+    "additions": 64,
+    "base_ref": "main",
+    "change_type": "security",
+    "changed_files": 3,
+    "deletions": 2,
+    "head_ref": "issue-30584-fix-permissions-references",
+    "languages": [
+      "java_or_kotlin",
+      "tests",
+      "yaml_action_or_config"
+    ],
+    "loc_changed": 66,
+    "security_signal": true,
+    "slots": [
+      "real_bug_present",
+      "multiline_suggestion"
+    ],
+    "surface": "backend"
+  },
+  "eval_id": "dotcms-core-35509",
+  "findings": [],
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "head_sha": "89f68df8cd5b5e1c83c638092548dfecd0b8c23a",
+  "labeling": {
+    "solo_labeled": null,
+    "status": "pending",
+    "tolerance_lines": 3
+  },
+  "match_candidates": [],
+  "pr_id": "pr-35509",
+  "pr_number": 35509,
+  "repo": "dotCMS/core",
+  "runs": {
+    "codex": {
+      "artifact_path": "eval/runs/dotcms-core-35509/codex.json",
+      "capture_status": "pending",
+      "captured_at": null,
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "89f68df8cd5b5e1c83c638092548dfecd0b8c23a",
+      "head_sha_matches": true,
+      "model": "gpt-5.4",
+      "notes": "Live capture skipped: GITHUB_TOKEN not set",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "disabled"
+    },
+    "openrouter": {
+      "artifact_path": "evaluation/bakeoff/runs/pr-35509/openrouter.json",
+      "capture_status": "skipped_dry_run",
+      "captured_at": "2026-05-07T02:20:20Z",
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "89f68df8cd5b5e1c83c638092548dfecd0b8c23a",
+      "head_sha_matches": true,
+      "model": "anthropic/claude-opus-4.7",
+      "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    }
+  },
+  "schema_doc": "evaluation/bakeoff/comparison/README.md",
+  "schema_version": "1",
+  "selection_rationale": "AuthN/AuthZ fix on a REST endpoint with paired OpenAPI + integration-test changes. Forces the reviewer to cross-check spec, implementation, and test coverage in one diff. Direct exercise of the security-relevant finding class.",
+  "title": "fix(content): enforce anonymous access restrictions for content references endpoints"
+}

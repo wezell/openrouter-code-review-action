@@ -1,0 +1,156 @@
+goal: >
+  Replace the Codex SDK in this PR-review GitHub Action with OpenRouter-routed
+  model calls, rebuild the agentic act mode on top of aider, and ship as a new
+  action (dotcms/openrouter-code-review-action@v1) so models/providers can be
+  swapped quickly when pricing or quality changes.
+
+constraints:
+  - Python >= 3.12
+  - Composite GitHub Action (action.yml shape preserved)
+  - uv for dependency management
+  - All LLM calls routed through OpenRouter (no direct vendor SDKs, no other routers)
+  - Act mode shells out to aider (no custom agentic loop)
+  - Models declared in an in-repo config file (e.g. .openrouter-review.yml)
+  - "Initial review and act model: anthropic/claude-opus-4.7 via OpenRouter"
+  - Single model per call — no mid-run swap or fallback chain
+  - No backwards compatibility with the existing Codex action's inputs
+  - Force-push that breaks reviewed-SHA ancestry falls back to fresh full review
+
+acceptance_criteria:
+  - On a curated 5-10 PR sample, ≥80% finding overlap with Codex baseline
+  - False-positive rate does not exceed Codex baseline on the sample
+  - Inline review comments parse from schema-enforced JSON and anchor to valid PR-diff lines (no 422 errors)
+  - Review continuation reuses prior review state and re-reviews only the SHA-delta on subsequent pushes
+  - Web search controllable via disabled/cached/live analog using OpenRouter :online variants
+  - Token streaming reaches GitHub Action logs
+  - Act mode applies and pushes edits via aider when a trusted author_association posts the trigger comment
+  - Changing review or act model is a single edit to the in-repo config file
+  - Action published as dotcms/openrouter-code-review-action@v1 with documented inputs
+
+ontology_schema:
+  name: OpenRouterCodeReviewAction
+  description: >
+    GitHub Action that reviews PRs and applies edits using OpenRouter-routed
+    models. Review path uses direct OpenRouter chat completions with tool-use
+    for schema-enforced JSON; act path shells out to aider. Model selection
+    lives in an in-repo config file so consumers can bump models without code.
+  fields:
+    - name: mode
+      type: string
+      description: Operation mode — review or act
+    - name: openrouter_api_key
+      type: string
+      description: OpenRouter API key for routed model calls
+    - name: config_path
+      type: string
+      description: Path in consuming repo to the model-config file
+    - name: review_model
+      type: string
+      description: OpenRouter slug used for review (default anthropic/claude-opus-4.7)
+    - name: act_model
+      type: string
+      description: OpenRouter slug used by aider for act mode
+    - name: reasoning_effort
+      type: string
+      description: Per-call reasoning effort (minimal/low/medium/high)
+    - name: web_search_mode
+      type: string
+      description: disabled/cached/live mapped to OpenRouter :online variants
+    - name: allowed_commenter_associations
+      type: array
+      description: GitHub author_associations allowed to trigger act mode
+    - name: review_findings
+      type: array
+      description: Structured findings per review (path, line, severity, message, suggestion)
+    - name: prior_review_state
+      type: object
+      description: Persisted previous-review state replacing CODEX_HOME cache
+    - name: aider_invocation
+      type: object
+      description: Subprocess shape (model, message, files, commit policy) for aider
+
+evaluation_principles:
+  - name: finding_overlap
+    description: Review findings overlap ≥80% with Codex baseline on sample PRs
+    weight: 0.30
+  - name: false_positive_discipline
+    description: False-positive rate does not exceed Codex baseline
+    weight: 0.20
+  - name: inline_anchor_validity
+    description: Inline comments anchor to valid diff lines and parse from schema-enforced JSON
+    weight: 0.15
+  - name: feature_parity
+    description: Schema output, review continuation, web search, and streaming preserved
+    weight: 0.15
+  - name: swap_speed
+    description: Switching review or act model is a single config-file edit, no code change
+    weight: 0.10
+  - name: act_safety
+    description: Aider only runs for allowlisted author_associations and edits stay on the PR branch
+    weight: 0.10
+
+exit_conditions:
+  - name: parity_passed
+    description: Bake-off passes
+    criteria: ≥80% finding overlap and no FP regression on 5-10 sample PRs
+  - name: feature_smoke_passes
+    description: All must-keep features verified
+    criteria: Inline JSON valid; continuation reuses prior state; :online returns results; streaming visible in logs
+  - name: action_published
+    description: Action shipped
+    criteria: Tagged v1 release of dotcms/openrouter-code-review-action with consumable README
+
+project_type: brownfield
+
+context_references:
+  - path: cli/clients/codex_client.py
+    role: primary
+    summary: Codex SDK wrapper to be replaced by an OpenRouter chat-completions client with tool-use for schema
+  - path: cli/core/config.py
+    role: primary
+    summary: Config dataclass; add config-file loader, swap OPENAI_API_KEY for OPENROUTER_API_KEY
+  - path: cli/review/
+    role: primary
+    summary: Review-continuation machinery — port off CODEX_HOME to a new prior-review storage format
+  - path: cli/workflows/edit_workflow.py
+    role: primary
+    summary: Act-mode workflow — replace Codex execution with aider subprocess
+  - path: cli/workflows/review_workflow.py
+    role: primary
+    summary: Review-mode workflow — replace Codex turns with OpenRouter chat completion + schema turn
+  - path: action.yml
+    role: primary
+    summary: Composite action — redo inputs (drop openai_api_key, add openrouter_api_key + config_path)
+  - path: prompts/review.md
+    role: reference
+    summary: Built-in reviewer prompt — reuse
+  - path: pyproject.toml
+    role: reference
+    summary: Drop codex-python; add openrouter HTTP client + aider-chat
+
+existing_patterns:
+  - Composite GitHub Action with Python entrypoints under cli/
+  - Pydantic + dataclasses for typed config (ReviewConfig)
+  - Two-turn structured output (agent turn + schema-enforced output turn)
+  - Review-continuation cache keyed by (repo, PR, model, reviewed_SHA) with fallback on cache miss or non-ancestor SHA
+  - Streaming agent-message events to logs
+  - author_association allowlist for act-mode trigger trust
+
+existing_dependencies:
+  keep:
+    - PyGithub==2.8.1
+    - pydantic==2.12.5
+    - uv (build/deps)
+    - ruff, mypy, pytest (dev)
+  remove:
+    - codex-python==1.122.0
+  add:
+    - openai SDK pointed at OpenRouter base URL (or httpx client)
+    - aider-chat (act-mode backend)
+
+metadata:
+  ambiguity_score: 0.15
+  project_type: brownfield
+  generated_via: "interview-path-B-fallback (MCP unavailable, agent-based extraction)"
+  generated_at: 2026-05-06
+  interview_session_id: 4ec59bf5-4d19-4273-9ed4-39c63e2ed43b

@@ -1,0 +1,41 @@
+[project]
+# Minimal project metadata for uv; this is not published.
+name = "codex-review-action"
+version = "0.0.0"
+description = "GitHub Action for Codex autonomous PR reviews and edits"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "codex-python==1.122.0",
+  "pydantic==2.12.5",
+  "PyGithub==2.8.1",
+  "PyYAML==6.0.3",
+]
+
+[tool.uv]
+# Treat repo as non-packaged (no editable build performed by uv)
+package = false
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "mypy",
+  "pytest",
+  "pre-commit",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "E",  # pycodestyle (incl. E402; we ignore E501 separately)
+  "F",  # pyflakes
+  "I",  # isort
+  "UP", # pyupgrade
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cli"]

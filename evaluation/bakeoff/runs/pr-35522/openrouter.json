@@ -1,0 +1,29 @@
+{
+  "pr_id": "pr-35522",
+  "run": "openrouter",
+  "status": "skipped_dry_run",
+  "head_sha": "f495ee3b148512acdaabccccbea6d5650a205998",
+  "repo": "dotCMS/core",
+  "pr_number": 35522,
+  "model": "anthropic/claude-opus-4.7",
+  "reasoning_effort": "medium",
+  "web_search_mode": "live",
+  "prior_review_state": null,
+  "review_run_result": null,
+  "posted": null,
+  "labels": [],
+  "solo_labeled": null,
+  "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+  "telemetry": {
+    "diff_chars": 9987,
+    "model_resolved": "anthropic/claude-opus-4.7:online",
+    "payload_messages": 2,
+    "response_format_kind": "json_schema",
+    "stream": false,
+    "reasoning_effort_resolved": "medium",
+    "usage": null
+  },
+  "captured_at": "2026-05-07T02:20:24Z",
+  "runner": "evaluation/bakeoff/run_openrouter.py",
+  "runner_version": "1.0.0"
+}

@@ -1,0 +1,727 @@
+# =============================================================================
+# Ground-truth labeled dataset of historical PR review findings.
+# Sub-AC 2.3.1 deliverable.
+# =============================================================================
+#
+# Purpose
+# -------
+#   This file is the **benchmark dataset** for the Codex → OpenRouter parity
+#   bake-off. Each entry is a candidate review finding, anchored to a PR in
+#   `eval/sample-prs.yaml`, with a retrospective ground-truth label of
+#   `TP` (true positive — concrete actionable bug present in the diff) or
+#   `FP` (false positive — non-actionable, phantom, pre-existing, or out of
+#   scope per `eval/baseline-methodology.md` §3).
+#
+#   At scoring time, model output is matched against entries here using the
+#   §4.5 matching rules (same path, line-range overlap or ±3 lines, same
+#   underlying bug per reviewer judgement). A model finding that matches a
+#   `TP` entry contributes to finding-overlap; a model finding that matches
+#   an `FP` entry counts toward the false-positive rate.
+#
+# What this dataset is NOT
+# ------------------------
+#   * It is not the model output. Model output lives in
+#     `eval/runs/<pr_id>/codex.json` and `evaluation/bakeoff/runs/pr-<n>/openrouter.json`.
+#   * It is not a per-finding label of model output — that is the
+#     `labels[]` block inside each run artifact (methodology §2.2 schema).
+#     Those labels are produced by labelers reading model output.
+#     This dataset is the upstream **ground truth** those labelers cross-check
+#     against, so a finding's TP/FP classification is grounded in the diff,
+#     not in whichever model emitted it (methodology §2.3 rule 5: no model
+#     self-grading).
+#   * It is not exhaustive. Every entry can be expanded with concrete line
+#     ranges and additional candidates as labelers inspect each PR's diff.
+#     Entries with `line_range_status: unverified` are anchors that still
+#     need a labeler to fix the line numbers from the actual diff at
+#     `head_sha`. Entries with `line_range_status: confirmed` have been
+#     pinned by inspection.
+#
+# Schema
+# ------
+#   Each entry under `findings:` MUST have:
+#     id              : stable benchmark identifier (e.g. gt-35567-001)
+#     pr_id           : matches `eval/sample-prs.yaml` `prs[].id`
+#     head_sha        : matches `eval/sample-prs.yaml` `prs[].head_sha`
+#     label           : TP | FP
+#     severity        : P0 | P1 | P2 | P3 (per `prompts/review.md`)
+#     class           : finding class (bug_correctness, security, performance,
+#                       refactor_regression, style_nit, missing_test,
+#                       hallucination, ...)
+#     path_hint       : best-effort target file path (full path from repo root)
+#     line_range      : { start: int, end: int } | null
+#     line_range_status: confirmed | unverified
+#     title           : short title — matches the prompt's "## P{N}: ..." format
+#     rationale       : ≤ 2 sentences — *why* this is the label (not what the
+#                       model said; what the diff actually shows).
+#     match_keywords  : list of distinctive substrings the matcher uses to
+#                       associate noisy model output with this entry; helps
+#                       the §4.5 reviewer-judgement step go faster.
+#     source          : retrospective_diff_review | merged_pr_metadata |
+#                       reviewer_comment_thread | bake_off_diagnostic
+#     confidence      : high | medium | low (labeler's confidence in the label)
+#
+# Methodology binding
+# -------------------
+#   * Label set, definitions, and tie-break rules: `eval/baseline-methodology.md` §2-§3.
+#   * Severity definitions: `prompts/review.md`.
+#   * Sample PR registry the entries reference: `eval/sample-prs.yaml`.
+#   * Matching rules used at score time: `eval/baseline-methodology.md` §4.5.
+#
+# Adding new entries
+# ------------------
+#   1. Pick a sample PR and inspect its diff at `head_sha`.
+#   2. Either populate a real bug found in the diff (`label: TP`) or a
+#      common spurious complaint a model is likely to make on this diff
+#      (`label: FP`). Both kinds belong here — the dataset benchmarks
+#      both finding-overlap and FP-discipline (seed AC 1 + AC 2).
+#   3. Set `line_range_status: confirmed` once the line numbers are pinned
+#      from the actual diff. Until then, leave it `unverified` and provide
+#      `path_hint` + `match_keywords` so the matcher still has anchors.
+#   4. Run `pytest tests/test_labeled_dataset.py` — schema and cross-ref
+#      checks fail loudly if anything is broken.
+#
+
+version: "1.0"
+dataset_id: "dotcms-bakeoff-v1"
+generated_at: "2026-05-06"
+source_sample: "eval/sample-prs.yaml"
+methodology: "eval/baseline-methodology.md"
+
+label_taxonomy:
+  TP: >-
+    True positive. A concrete, actionable issue present in the diff at
+    head_sha. A competent reviewer would flag it; the author would fix it
+    if shown. Per methodology §2.1.
+  FP: >-
+    False positive. A non-actionable, phantom, pre-existing, speculative,
+    out-of-scope, schema-invalid, or hallucinated finding. Per
+    methodology §3 — first matching rule wins.
+
+severity_taxonomy:
+  P0: "must-fix-before-merge — data loss, security breach, build break"
+  P1: "should-fix — correctness or significant regression risk"
+  P2: "nice-to-fix — code quality with some concrete consequence"
+  P3: "nit — style/clarity; tracked separately in scoring (§4.4)"
+
+class_taxonomy:
+  bug_correctness:        "Logic / state-handling / atomicity / null handling bug"
+  security:               "AuthN/AuthZ, input validation against attacker, info disclosure"
+  performance:            "Algorithmic regression, unbounded loop, N+1, missing index"
+  refactor_regression:    "Behavior change snuck into a 'pure refactor' diff"
+  missing_test:           "Behavior change with no test coverage of the new path"
+  hallucination:          "Cites a file/function/API that doesn't exist at head_sha"
+  pre_existing:           "Flagged code wasn't introduced or modified by this diff"
+  style_nit:              "Formatting/personal-preference; explicitly excluded by prompt"
+  speculation:            "'May break X' without naming the concrete code that breaks"
+  out_of_scope:           "Doc typo, change outside the diff, intentional change"
+
+# ---------------------------------------------------------------------------
+# Findings
+# ---------------------------------------------------------------------------
+findings:
+  # ------------------------------------------------------------------------
+  # PR 35567 — bug_fix · 3-line transactional fix
+  # Slot: real_bug_present, multiline_suggestion
+  # ------------------------------------------------------------------------
+  - id: gt-35567-001
+    pr_id: dotcms-core-35567
+    head_sha: 922996001a7e092e2a591db45b74d7603d085117
+    label: TP
+    severity: P1
+    class: bug_correctness
+    path_hint: "dotCMS/src/main/java/com/dotcms/uniquefields/UniqueFieldValidationStrategy.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: @CloseDBIfOpened on UniqueFieldValidator broke atomicity with parent contentlet save"
+    rationale: >-
+      The pre-fix code carried @CloseDBIfOpened on the validator, which
+      committed/closed the surrounding DB transaction mid-save. Removing
+      the annotation restores atomicity with the contentlet save the
+      validator runs inside. A reviewer should affirm this is the
+      intended fix (catching that absence-of-annotation == correctness
+      improvement is the test of the diff).
+    match_keywords:
+      - "@CloseDBIfOpened"
+      - "atomicity"
+      - "transaction"
+      - "contentlet save"
+    source: merged_pr_metadata
+    confidence: high
+
+  - id: gt-35567-002
+    pr_id: dotcms-core-35567
+    head_sha: 922996001a7e092e2a591db45b74d7603d085117
+    label: FP
+    severity: P2
+    class: missing_test
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: removal of @CloseDBIfOpened lacks a regression test"
+    rationale: >-
+      A 3-line annotation removal that *restores* atomicity does not
+      need a brand-new unit test to prove a long-standing transactional
+      contract is now respected. The fix is the simplest defensible one
+      for the bug. Demanding a new test on a 3-line correctness
+      restoration is a canonical refactor-regression-style FP trap.
+    match_keywords:
+      - "missing test"
+      - "no test"
+      - "regression test"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  # ------------------------------------------------------------------------
+  # PR 35509 — security · enforce anonymous-access on /content-references
+  # Slot: real_bug_present, multiline_suggestion
+  # ------------------------------------------------------------------------
+  - id: gt-35509-001
+    pr_id: dotcms-core-35509
+    head_sha: 89f68df8cd5b5e1c83c638092548dfecd0b8c23a
+    label: TP
+    severity: P0
+    class: security
+    path_hint: "dotCMS/src/main/java/com/dotcms/rest/api/v1/contenttype/ContentTypeReferenceResource.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P0: anonymous access must be denied on content-references endpoints"
+    rationale: >-
+      The diff explicitly enforces an anonymous-access restriction on a
+      REST endpoint that previously leaked content-reference data. A
+      reviewer should affirm that the new check is wired into every
+      affected endpoint method (not just one), and that the integration
+      test asserts a 401/403 path. Failing to enforce on any single
+      endpoint method would re-open the leak.
+    match_keywords:
+      - "anonymous"
+      - "ALLOW_ANONYMOUS"
+      - "DENY_ANONYMOUS"
+      - "WebResource"
+      - "init("
+    source: merged_pr_metadata
+    confidence: high
+
+  - id: gt-35509-002
+    pr_id: dotcms-core-35509
+    head_sha: 89f68df8cd5b5e1c83c638092548dfecd0b8c23a
+    label: TP
+    severity: P1
+    class: missing_test
+    path_hint: "dotCMS/src/integration-test/java/com/dotcms/rest/api/v1/contenttype/ContentTypeReferenceResourceTest.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: integration test must assert anonymous user is denied"
+    rationale: >-
+      Because this PR is the security fix itself, an integration test
+      that exercises the deny path is part of the PR. A reviewer should
+      confirm the new test asserts the unauthenticated case AND a
+      previously-allowed authenticated case still works. Asserting only
+      one direction would be a regression risk.
+    match_keywords:
+      - "integration test"
+      - "anonymous"
+      - "401"
+      - "403"
+      - "Unauthorized"
+    source: merged_pr_metadata
+    confidence: high
+
+  - id: gt-35509-003
+    pr_id: dotcms-core-35509
+    head_sha: 89f68df8cd5b5e1c83c638092548dfecd0b8c23a
+    label: FP
+    severity: P2
+    class: speculation
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: this change might break existing anonymous integrations"
+    rationale: >-
+      Closing an anonymous-data leak is the explicit purpose of the PR.
+      Speculating that "consumers might rely on the anonymous path" is
+      the canonical security-PR FP — it confuses *intentional* removal
+      of an unsafe path with a regression. Methodology §3 rule 4
+      (out-of-scope: intentional change) and §3.1 (non-actionable).
+    match_keywords:
+      - "may break"
+      - "consumers"
+      - "anonymous integration"
+      - "regression"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  # ------------------------------------------------------------------------
+  # PR 35498 — security · disable Jersey WADL endpoint
+  # Slot: clean_diff
+  # ------------------------------------------------------------------------
+  - id: gt-35498-001
+    pr_id: dotcms-core-35498
+    head_sha: fec3bfeb56251911ebf21f566141e1b356b7b695
+    label: FP
+    severity: P2
+    class: refactor_regression
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: disabling WADL removes a feature consumers might rely on"
+    rationale: >-
+      WADL is an information-disclosure surface the project is
+      intentionally hardening off. Treating that hardening as a
+      "removed feature" is the canonical security-PR FP trap. A
+      reasonable reviewer would not file this — methodology §3
+      rule 4 (intentional change).
+    match_keywords:
+      - "WADL"
+      - "removed feature"
+      - "regression"
+      - "consumers rely"
+    source: bake_off_diagnostic
+    confidence: high
+
+  - id: gt-35498-002
+    pr_id: dotcms-core-35498
+    head_sha: fec3bfeb56251911ebf21f566141e1b356b7b695
+    label: FP
+    severity: P3
+    class: missing_test
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P3: WADL hardening should include a test asserting the endpoint is 404"
+    rationale: >-
+      The diff already includes test changes (per the merged PR's
+      file count). Demanding additional tests for a config-flag
+      hardening change is below the prompt's signal bar — methodology
+      §3 rule 4 (out-of-scope nit).
+    match_keywords:
+      - "missing test"
+      - "WADL"
+      - "404"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  # ------------------------------------------------------------------------
+  # PR 35458 — security · permission cache role-revocation propagation
+  # Slot: real_bug_present, continuation
+  # ------------------------------------------------------------------------
+  - id: gt-35458-001
+    pr_id: dotcms-core-35458
+    head_sha: 61d6d1abdf8abb18a84887e3f8a2a34501b5bfee
+    label: TP
+    severity: P0
+    class: security
+    path_hint: "dotCMS/src/main/java/com/dotmarketing/business/PermissionFactoryImpl.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P0: short-term permission cache must be invalidated on role revocation"
+    rationale: >-
+      The pre-fix bug: a revoked role still resolved to its old
+      permissions until the short-term cache TTL elapsed, leaving a
+      window where a removed user kept access. The diff adds the
+      explicit invalidation path. A reviewer should confirm every
+      revocation entry-point routes through the new invalidation
+      (factory + cache + integration test must agree).
+    match_keywords:
+      - "permission cache"
+      - "invalidate"
+      - "role revocation"
+      - "PermissionFactory"
+    source: merged_pr_metadata
+    confidence: high
+
+  - id: gt-35458-002
+    pr_id: dotcms-core-35458
+    head_sha: 61d6d1abdf8abb18a84887e3f8a2a34501b5bfee
+    label: TP
+    severity: P1
+    class: bug_correctness
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P1: invalidation must cover both per-user and per-role cache entries"
+    rationale: >-
+      Permission caches in dotCMS are keyed both by user and by role.
+      An invalidation that touches only one side leaves stale entries
+      behind. A reviewer should affirm both keys are flushed in the
+      new path; missing one is the most-likely residual bug.
+    match_keywords:
+      - "user cache"
+      - "role cache"
+      - "invalidate"
+      - "permission key"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  - id: gt-35458-003
+    pr_id: dotcms-core-35458
+    head_sha: 61d6d1abdf8abb18a84887e3f8a2a34501b5bfee
+    label: FP
+    severity: P2
+    class: pre_existing
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: cache TTL constant is hardcoded — should be configurable"
+    rationale: >-
+      The TTL constant predates this diff. Re-flagging long-standing
+      design choices on an unrelated bug-fix PR violates the prompt's
+      rule 4 ("bug was introduced in the commit"). Methodology §3
+      rule 2 (pre-existing).
+    match_keywords:
+      - "hardcoded"
+      - "TTL"
+      - "should be configurable"
+    source: bake_off_diagnostic
+    confidence: high
+
+  # ------------------------------------------------------------------------
+  # PR 35491 — performance · LIMIT-1 query in validateRelationships
+  # Slot: real_bug_present, multiline_suggestion
+  # ------------------------------------------------------------------------
+  - id: gt-35491-001
+    pr_id: dotcms-core-35491
+    head_sha: 467b27607aec3df2a1520a9ab35dd83fef624a88
+    label: TP
+    severity: P1
+    class: performance
+    path_hint: "dotCMS/src/main/java/com/dotmarketing/portlets/contentlet/business/ContentletAPIImpl.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: validateRelationships() previously fetched the full result set just to test existence"
+    rationale: >-
+      The pre-fix loop pulled every related row to check whether any
+      existed. The diff replaces it with a LIMIT-1 query — the correct
+      shape for an existence check. A reviewer should affirm the new
+      query is semantically equivalent (existence-only) and not a
+      narrowing that drops cases the loop used to validate.
+    match_keywords:
+      - "validateRelationships"
+      - "LIMIT 1"
+      - "exists"
+      - "unbounded"
+    source: merged_pr_metadata
+    confidence: high
+
+  - id: gt-35491-002
+    pr_id: dotcms-core-35491
+    head_sha: 467b27607aec3df2a1520a9ab35dd83fef624a88
+    label: FP
+    severity: P2
+    class: speculation
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: LIMIT 1 may produce non-deterministic results without ORDER BY"
+    rationale: >-
+      The query is an existence check, not a ranked fetch. "Non-
+      deterministic without ORDER BY" is a textbook FP on existence
+      queries — methodology §3 rule 3 (speculation without naming the
+      concrete repo code that would break).
+    match_keywords:
+      - "ORDER BY"
+      - "non-deterministic"
+      - "LIMIT 1"
+    source: bake_off_diagnostic
+    confidence: high
+
+  # ------------------------------------------------------------------------
+  # PR 35469 — bug_fix · guard StoryBlock JSON parsing
+  # Slot: real_bug_present
+  # ------------------------------------------------------------------------
+  - id: gt-35469-001
+    pr_id: dotcms-core-35469
+    head_sha: a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0
+    label: TP
+    severity: P1
+    class: bug_correctness
+    path_hint: "dotCMS/src/main/java/com/dotcms/contenttype/transform/contenttype/StoryBlockContentletTransformer.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: StoryBlock JSON must be guarded against non-object scalars"
+    rationale: >-
+      The pre-fix transformer assumed StoryBlock JSON was always an
+      object; a scalar input (string/number) crashed the parser. The
+      diff introduces an explicit type guard. A reviewer should
+      affirm the guard short-circuits cleanly (returns the empty
+      block / wraps the scalar) instead of silently dropping data.
+    match_keywords:
+      - "StoryBlock"
+      - "JSON"
+      - "isObject"
+      - "scalar"
+      - "guard"
+    source: merged_pr_metadata
+    confidence: high
+
+  - id: gt-35469-002
+    pr_id: dotcms-core-35469
+    head_sha: a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0
+    label: TP
+    severity: P2
+    class: missing_test
+    path_hint: "dotCMS/src/integration-test/java/com/dotcms/contenttype/transform/StoryBlockTransformerIntegrationTest.java"
+    line_range: null
+    line_range_status: unverified
+    title: "P2: integration test must cover the scalar-input path"
+    rationale: >-
+      The new guard's value comes from the scalar-input case. A
+      reviewer should confirm the paired test file in the diff
+      exercises that path (string/number/null), not just the
+      preexisting object case.
+    match_keywords:
+      - "scalar"
+      - "string"
+      - "number"
+      - "integration test"
+      - "StoryBlock"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  # ------------------------------------------------------------------------
+  # PR 35518 — refactor · remove duplicate copy-URL button
+  # Slot: clean_diff
+  # ------------------------------------------------------------------------
+  - id: gt-35518-001
+    pr_id: dotcms-core-35518
+    head_sha: f31e33c1d2280fea6a3b7d9a277c14fb51053e6c
+    label: FP
+    severity: P2
+    class: refactor_regression
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: deleted copy-URL button removes a user-facing feature"
+    rationale: >-
+      The PR explicitly removes a duplicate of an existing button —
+      the surviving button still provides the feature. Treating a
+      duplicate-removal as a feature regression is the canonical
+      refactor FP trap. Methodology §3 rule 4 (intentional change).
+    match_keywords:
+      - "copy URL"
+      - "duplicate"
+      - "removed feature"
+      - "regression"
+    source: bake_off_diagnostic
+    confidence: high
+
+  - id: gt-35518-002
+    pr_id: dotcms-core-35518
+    head_sha: f31e33c1d2280fea6a3b7d9a277c14fb51053e6c
+    label: FP
+    severity: P3
+    class: missing_test
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P3: removal of UI control should be covered by a unit test"
+    rationale: >-
+      Pure UI deletion of a redundant control does not need a new
+      test. Demanding one is a P3 nit at best — methodology §4.4
+      excludes nits from the FP-rate denominator, but a model that
+      files this still wastes reviewer attention.
+    match_keywords:
+      - "missing test"
+      - "unit test"
+      - "copy URL"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  # ------------------------------------------------------------------------
+  # PR 35449 — refactor · Material Icons → Material Symbols (71 files)
+  # Slot: clean_diff, force_push_ancestry
+  # ------------------------------------------------------------------------
+  - id: gt-35449-001
+    pr_id: dotcms-core-35449
+    head_sha: 76fb121bddeac5943fde9060014546a984dd6a5e
+    label: FP
+    severity: P2
+    class: refactor_regression
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: icon-name change might affect i18n / accessibility labels"
+    rationale: >-
+      Material Symbols Outlined is a drop-in replacement for the
+      legacy icon font; the rendered glyph and aria-label semantics
+      are unchanged. Speculating about i18n impact on a uniform
+      mechanical rename is methodology §3 rule 3 (speculation
+      without naming the concrete code that breaks).
+    match_keywords:
+      - "i18n"
+      - "accessibility"
+      - "aria-label"
+      - "icon name"
+    source: bake_off_diagnostic
+    confidence: high
+
+  - id: gt-35449-002
+    pr_id: dotcms-core-35449
+    head_sha: 76fb121bddeac5943fde9060014546a984dd6a5e
+    label: FP
+    severity: P3
+    class: speculation
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P3: per-file flag of identical rename across 71 files"
+    rationale: >-
+      A uniform rename across 71 files is a single semantic finding
+      (or zero, if it's a clean migration). Per-file repetition is
+      methodology §2.1 DUP territory — only the first instance
+      should keep its TP/FP label, and on a clean migration that
+      label is FP/DUP.
+    match_keywords:
+      - "Material Icons"
+      - "Material Symbols"
+      - "rename"
+    source: bake_off_diagnostic
+    confidence: high
+
+  # ------------------------------------------------------------------------
+  # PR 35465 — feature · chip filter component (with web_search_relevant)
+  # Slot: real_bug_present, multiline_suggestion, web_search_relevant
+  # ------------------------------------------------------------------------
+  - id: gt-35465-001
+    pr_id: dotcms-core-35465
+    head_sha: 855c7d5ce8522b2bfdd0b512ade9f641ec198280
+    label: TP
+    severity: P1
+    class: bug_correctness
+    path_hint: "core-web/libs/edit-content/src/lib/components/content-drive/components/chip-filter/chip-filter.component.ts"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: chip selection must use signal-based change detection"
+    rationale: >-
+      A net-new Angular component on a stack that uses signals must
+      participate in signal-based change detection (signal() / model()
+      / computed()). A reviewer should verify the chip's selection
+      state isn't a plain @Input() that bypasses fine-grained CD —
+      the most common framework-aware bug class on Angular features.
+    match_keywords:
+      - "signal"
+      - "model("
+      - "@Input"
+      - "OnPush"
+      - "change detection"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  - id: gt-35465-002
+    pr_id: dotcms-core-35465
+    head_sha: 855c7d5ce8522b2bfdd0b512ade9f641ec198280
+    label: TP
+    severity: P1
+    class: security
+    path_hint: "core-web/libs/edit-content/src/lib/components/content-drive/components/chip-filter/chip-filter.component.html"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: chip label must be rendered text, not bound HTML"
+    rationale: >-
+      A user-supplied filter chip rendered via [innerHTML] is an XSS
+      vector in an editor surface. A reviewer should affirm the
+      template uses interpolation ({{ ... }}) or a safe binding —
+      this is the canonical Angular security finding.
+    match_keywords:
+      - "innerHTML"
+      - "XSS"
+      - "DomSanitizer"
+      - "interpolation"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  - id: gt-35465-003
+    pr_id: dotcms-core-35465
+    head_sha: 855c7d5ce8522b2bfdd0b512ade9f641ec198280
+    label: FP
+    severity: P2
+    class: missing_test
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: feature lacks tests"
+    rationale: >-
+      The PR ships paired component spec (.spec.ts). Filing
+      "lacks tests" without naming a *missing* code path is
+      methodology §3 rule 3 (speculation without evidence).
+    match_keywords:
+      - "missing test"
+      - "no tests"
+      - ".spec.ts"
+    source: bake_off_diagnostic
+    confidence: high
+
+  # ------------------------------------------------------------------------
+  # PR 35522 — infra · rollback-safety workflow extraction
+  # Slot: clean_diff
+  # ------------------------------------------------------------------------
+  - id: gt-35522-001
+    pr_id: dotcms-core-35522
+    head_sha: f495ee3b148512acdaabccccbea6d5650a205998
+    label: TP
+    severity: P1
+    class: security
+    path_hint: ".github/workflows/rollback-safety.yml"
+    line_range: null
+    line_range_status: unverified
+    title: "P1: rollback-safety workflow must run before any release-promotion job"
+    rationale: >-
+      The rollback gate's value comes from being a pre-flight check
+      on release promotion. A reviewer should affirm the new
+      workflow is wired as a `needs:` predecessor of the promotion
+      job (and not just a parallel job that the promotion can race).
+    match_keywords:
+      - "needs:"
+      - "rollback-safety"
+      - "release"
+      - "if:"
+    source: bake_off_diagnostic
+    confidence: medium
+
+  - id: gt-35522-002
+    pr_id: dotcms-core-35522
+    head_sha: f495ee3b148512acdaabccccbea6d5650a205998
+    label: FP
+    severity: P2
+    class: missing_test
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P2: workflow change should include a test"
+    rationale: >-
+      GitHub Actions YAML changes don't have a "unit-test" surface in
+      this repo's testing model. "Missing test" on infra YAML is the
+      canonical infra-PR FP — methodology §3 rule 4 (out-of-scope
+      category: documentation/style/no-test-surface).
+    match_keywords:
+      - "missing test"
+      - "unit test"
+      - "workflow"
+    source: bake_off_diagnostic
+    confidence: high
+
+  - id: gt-35522-003
+    pr_id: dotcms-core-35522
+    head_sha: f495ee3b148512acdaabccccbea6d5650a205998
+    label: FP
+    severity: P3
+    class: speculation
+    path_hint: null
+    line_range: null
+    line_range_status: unverified
+    title: "P3: workflow may have unhandled errors"
+    rationale: >-
+      Vague "unhandled errors" complaint without naming the concrete
+      step that swallows an error. Methodology §3 rule 3
+      (speculation).
+    match_keywords:
+      - "unhandled error"
+      - "error handling"
+      - "fail-fast"
+    source: bake_off_diagnostic
+    confidence: high
+
+# ---------------------------------------------------------------------------
+# Removal log — PRs whose entries were deliberately retracted from the dataset.
+# Per methodology §1.5 silent removals are forbidden; record the reason here.
+# ---------------------------------------------------------------------------
+removed: []

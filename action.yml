@@ -1,0 +1,157 @@
+name: "Codex Code Review & Actor"
+description: "Run Codex to review a PR and post review comments"
+author: "OpenAI Codex"
+branding:
+  icon: "search"
+  color: "blue"
+
+inputs:
+  mode:
+    description: "Operation mode: review | act"
+    required: false
+    default: "review"
+  openai_api_key:
+    description: "OpenAI API key for the selected model provider"
+    required: false
+  openrouter_api_key:
+    description: "OpenRouter API key used for all routed model calls"
+    required: false
+  config_path:
+    description: >-
+      Path (relative to the consuming repo's checkout) to the in-repo OpenRouter
+      model config file. Edit that file to swap review or act model — no code
+      change required. Defaults to .openrouter-review.yml at the repo root.
+    required: false
+    default: ".openrouter-review.yml"
+  model:
+    description: "Model to use (e.g., gpt-5, gpt-4.1-mini)"
+    required: false
+    default: "gpt-5.4"
+  reasoning_effort:
+    description: "Reasoning effort: minimal | low | medium | high"
+    required: false
+    default: "medium"
+  web_search_mode:
+    description: "Web search mode: disabled | cached | live"
+    required: false
+    default: "live"
+  debug_level:
+    description: "Debug verbosity: 0 (off), 1 (basic), 2 (trace)"
+    required: false
+    default: "1"
+  dry_run:
+    description: "If '1', print payloads but do not post comments"
+    required: false
+    default: "0"
+  stream_agent_messages:
+    description: "If '1', stream model output to logs"
+    required: false
+    default: "1"
+  act_instructions:
+    description: "Additional instructions for act mode (autonomous editing)"
+    required: false
+    default: ""
+  allowed_commenter_associations:
+    description: "Comma-separated GitHub comment author_association values allowed to trigger act mode"
+    required: false
+    default: "MEMBER,OWNER,COLLABORATOR"
+  additional_prompt:
+    description: "Extra reviewer instructions appended to the review prompt (verbatim)"
+    required: false
+    default: ""
+  extra_pip_args:
+    description: "Additional pip arguments (e.g., --index-url)"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        set -euo pipefail
+        valid_efforts="minimal low medium high"
+        valid_search_modes="disabled cached live"
+        contains_word() { case " $1 " in *" $2 "*) return 0;; *) return 1;; esac; }
+        # Mode
+        case "${{ inputs.mode }}" in review|act) :;; *) echo "::error::Invalid mode: ${{ inputs.mode }} (allowed: review|act)"; exit 2;; esac
+        # Reasoning efforts
+        if ! contains_word "$valid_efforts" "${{ inputs.reasoning_effort }}"; then
+          echo "::error::Invalid reasoning_effort: ${{ inputs.reasoning_effort }} (allowed: minimal|low|medium|high)"; exit 2;
+        fi
+        # Web search mode
+        if ! contains_word "$valid_search_modes" "${{ inputs.web_search_mode }}"; then
+          echo "::error::Invalid web_search_mode: ${{ inputs.web_search_mode }} (allowed: disabled|cached|live)"; exit 2;
+        fi
+    - name: Prepare review resume state
+      if: ${{ inputs.mode == 'review' }}
+      id: review_resume_state
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GITHUB_API_URL: ${{ github.api_url }}
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        RUNNER_TEMP: ${{ runner.temp }}
+        CODEX_MODEL_INPUT: ${{ inputs.model }}
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        PYTHONPATH="${GITHUB_ACTION_PATH}:${PYTHONPATH:-}" \
+          python3 -m cli.review.prepare_resume_state
+    - name: Restore review Codex cache
+      if: ${{ inputs.mode == 'review' && steps.review_resume_state.outputs.restore_key != '' }}
+      id: review_codex_cache
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.review_resume_state.outputs.codex_home }}
+        key: ${{ steps.review_resume_state.outputs.restore_key }}
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        python3 -m pip install --upgrade pip
+        python3 -m pip install ${{ inputs.extra_pip_args }} -r "${{ github.action_path }}/requirements.txt"
+
+    - name: Run Codex autonomous review (CLI)
+      id: run_codex_cli
+      shell: bash
+      env:
+        # Tokens
+        GITHUB_TOKEN: ${{ github.token }}
+        OPENAI_API_KEY: ${{ inputs.openai_api_key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter_api_key }}
+        # Config
+        CODEX_MODE: ${{ inputs.mode }}
+        CODEX_MODEL: ${{ inputs.model }}
+        # In-repo model config — single edit swaps the review/act model.
+        OPENROUTER_REVIEW_CONFIG: ${{ inputs.config_path }}
+        CODEX_REASONING_EFFORT: ${{ inputs.reasoning_effort }}
+        CODEX_WEB_SEARCH_MODE: ${{ inputs.web_search_mode }}
+        CODEX_ACT_INSTRUCTIONS: ${{ inputs.act_instructions }}
+        CODEX_ALLOWED_COMMENTER_ASSOCIATIONS: ${{ inputs.allowed_commenter_associations }}
+        CODEX_ADDITIONAL_PROMPT: ${{ inputs.additional_prompt }}
+        DEBUG_CODEREVIEW: ${{ inputs.debug_level }}
+        DRY_RUN: ${{ inputs.dry_run }}
+        STREAM_AGENT_MESSAGES: ${{ inputs.stream_agent_messages }}
+        # AC-6: ensure Python does not buffer stdout/stderr so token
+        # deltas reach the GitHub Actions live log as soon as the
+        # OpenRouter SSE stream emits them.
+        PYTHONUNBUFFERED: "1"
+        CODEX_HOME: ${{ steps.review_resume_state.outputs.codex_home }}
+        CODEX_REVIEW_PREVIOUS_HEAD_SHA: ${{ steps.review_resume_state.outputs.previous_reviewed_sha }}
+        CODEX_REVIEW_CACHE_HIT: ${{ steps.review_codex_cache.outputs.cache-hit }}
+      run: |
+        set -euo pipefail
+        # Execute the CLI directly; it detects GitHub Actions via env.
+        # ``-u`` belt-and-braces with PYTHONUNBUFFERED above so streaming
+        # output is forwarded to the GH Actions log line-by-line.
+        PYTHONPATH="${{ github.action_path }}:${PYTHONPATH:-}" \
+          python3 -u -m cli.main
+    - name: Save review Codex cache
+      if: ${{ inputs.mode == 'review' && steps.run_codex_cli.outcome == 'success' && steps.review_resume_state.outputs.current_cache_key != '' && !(steps.review_codex_cache.outputs.cache-hit == 'true' && steps.review_resume_state.outputs.restore_key == steps.review_resume_state.outputs.current_cache_key) }}
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.review_resume_state.outputs.codex_home }}
+        key: ${{ steps.review_resume_state.outputs.current_cache_key }}

@@ -1,0 +1,95 @@
+{
+  "diff_signal": {
+    "additions": 184,
+    "base_ref": "main",
+    "change_type": "performance",
+    "changed_files": 2,
+    "deletions": 25,
+    "head_ref": "fix/issue-35489-validate-relationships-limit",
+    "languages": [
+      "java_or_kotlin",
+      "tests"
+    ],
+    "loc_changed": 209,
+    "security_signal": false,
+    "slots": [
+      "real_bug_present",
+      "multiline_suggestion"
+    ],
+    "surface": "backend"
+  },
+  "eval_id": "dotcms-core-35491",
+  "findings": [],
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "head_sha": "467b27607aec3df2a1520a9ab35dd83fef624a88",
+  "labeling": {
+    "solo_labeled": null,
+    "status": "pending",
+    "tolerance_lines": 3
+  },
+  "match_candidates": [],
+  "pr_id": "pr-35491",
+  "pr_number": 35491,
+  "repo": "dotCMS/core",
+  "runs": {
+    "codex": {
+      "artifact_path": "eval/runs/dotcms-core-35491/codex.json",
+      "capture_status": "pending",
+      "captured_at": null,
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "467b27607aec3df2a1520a9ab35dd83fef624a88",
+      "head_sha_matches": true,
+      "model": "gpt-5.4",
+      "notes": "Live capture skipped: GITHUB_TOKEN not set",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "disabled"
+    },
+    "openrouter": {
+      "artifact_path": "evaluation/bakeoff/runs/pr-35491/openrouter.json",
+      "capture_status": "skipped_dry_run",
+      "captured_at": "2026-05-07T02:20:21Z",
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "467b27607aec3df2a1520a9ab35dd83fef624a88",
+      "head_sha_matches": true,
+      "model": "anthropic/claude-opus-4.7",
+      "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    }
+  },
+  "schema_doc": "evaluation/bakeoff/comparison/README.md",
+  "schema_version": "1",
+  "selection_rationale": "Performance bug \u2014 replacing an unbounded loop with a LIMIT-1 query. The reviewer should affirm the perf rationale and verify the new query preserves correctness; a strong test of \"praise legitimate fixes without inventing new objections\" (FP discipline).",
+  "title": "fix(content): replace unbounded query loop with LIMIT-1 DB call in validateRelationships() (#35489)"
+}

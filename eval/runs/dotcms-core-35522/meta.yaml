@@ -1,0 +1,9 @@
+capture_status: pending
+head_sha: f495ee3b148512acdaabccccbea6d5650a205998
+model: gpt-5.4
+pr: 35522
+pr_id: dotcms-core-35522
+reasoning_effort: medium
+repo: dotCMS/core
+runner_version: '1'
+web_search_mode: cached

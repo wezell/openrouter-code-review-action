@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "prs": [
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35567",
+      "head_sha": "922996001a7e092e2a591db45b74d7603d085117",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35567"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35509",
+      "head_sha": "89f68df8cd5b5e1c83c638092548dfecd0b8c23a",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35509"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35498",
+      "head_sha": "fec3bfeb56251911ebf21f566141e1b356b7b695",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35498"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35458",
+      "head_sha": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35458"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35491",
+      "head_sha": "467b27607aec3df2a1520a9ab35dd83fef624a88",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35491"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35469",
+      "head_sha": "a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35469"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35518",
+      "head_sha": "f31e33c1d2280fea6a3b7d9a277c14fb51053e6c",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35518"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35449",
+      "head_sha": "76fb121bddeac5943fde9060014546a984dd6a5e",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35449"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35465",
+      "head_sha": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35465"
+    },
+    {
+      "codex_findings_count": 0,
+      "codex_status": "pending",
+      "eval_id": "dotcms-core-35522",
+      "head_sha": "f495ee3b148512acdaabccccbea6d5650a205998",
+      "labeling_status": "pending",
+      "match_candidate_count": 0,
+      "openrouter_findings_count": 0,
+      "openrouter_status": "skipped_dry_run",
+      "pr_id": "pr-35522"
+    }
+  ],
+  "sample_size": 10,
+  "schema_version": "1",
+  "status_counts": {
+    "pending": 10
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "diff_signal": {
+    "additions": 300,
+    "base_ref": "main",
+    "change_type": "security",
+    "changed_files": 4,
+    "deletions": 3,
+    "head_ref": "fix/role-revocation-permission-cache",
+    "languages": [
+      "java_or_kotlin",
+      "tests"
+    ],
+    "loc_changed": 303,
+    "security_signal": true,
+    "slots": [
+      "real_bug_present",
+      "continuation"
+    ],
+    "surface": "backend"
+  },
+  "eval_id": "dotcms-core-35458",
+  "findings": [],
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "head_sha": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+  "labeling": {
+    "solo_labeled": null,
+    "status": "pending",
+    "tolerance_lines": 3
+  },
+  "match_candidates": [],
+  "pr_id": "pr-35458",
+  "pr_number": 35458,
+  "repo": "dotCMS/core",
+  "runs": {
+    "codex": {
+      "artifact_path": "eval/runs/dotcms-core-35458/codex.json",
+      "capture_status": "pending",
+      "captured_at": null,
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+      "head_sha_matches": true,
+      "model": "gpt-5.4",
+      "notes": "Live capture skipped: GITHUB_TOKEN not set",
+      "present": true,
+      "reasoning_effort": "high",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "disabled"
+    },
+    "openrouter": {
+      "artifact_path": "evaluation/bakeoff/runs/pr-35458/openrouter.json",
+      "capture_status": "skipped_dry_run",
+      "captured_at": "2026-05-07T02:20:21Z",
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+      "head_sha_matches": true,
+      "model": "anthropic/claude-opus-4.7",
+      "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    }
+  },
+  "schema_doc": "evaluation/bakeoff/comparison/README.md",
+  "schema_version": "1",
+  "selection_rationale": "Cache-invalidation bug in the permission system \u2014 classically the hardest class of bug for LLM reviewers (state synchronization across a cache + factory + integration test). Selected to stress the reviewer's cross-file reasoning without being so large that diff context overflows.",
+  "title": "fix(permissions): propagate role revocation through short-term permission cache"
+}

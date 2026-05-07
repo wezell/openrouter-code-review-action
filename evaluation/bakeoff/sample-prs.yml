@@ -1,0 +1,235 @@
+# Curated PR sample for the Codex-vs-OpenRouter parity bake-off.
+#
+# Sub-AC 1.1.1 deliverable: 5–10 representative historical PRs from the
+# primary consumer repo (dotCMS/core) covering varied change types so the
+# parity comparison is not skewed by a single style of change.
+#
+# This file is the machine-readable index. See sample-prs.md for the
+# selection rationale and the per-PR notes.
+#
+# Schema (one entry per PR):
+#   number:         GitHub PR number (int)
+#   repo:           "owner/repo" (string)
+#   title:          PR title (string)
+#   author:         GitHub login (string)
+#   merged_at:      ISO-8601 UTC merge timestamp (string)
+#   merge_commit:   merge-commit SHA (string) — review against this SHA
+#   base_ref:       PR base branch (string) — usually "main"
+#   head_ref:       PR head branch (string)
+#   additions:      lines added (int)
+#   deletions:      lines deleted (int)
+#   changed_files:  number of files changed (int)
+#   surface:        primary surface area — backend | frontend | infra | mixed
+#   change_type:    bug_fix | feature | refactor | security | performance | infra
+#   security_signal: true if the change has explicit security/auth/permissions
+#                    impact (allows the bake-off to weight FP discipline on
+#                    sensitive paths)
+#   why:            one-line selection rationale
+
+repo: dotCMS/core
+total: 10
+target_size: 5-10  # per Sub-AC 1.1
+sampling_window: 2026-04-23 to 2026-05-06  # last ~2 weeks of merged PRs at task time
+sampling_method: hand-picked from `gh pr list --repo dotCMS/core --state merged`
+                 to span change_type, surface area, and security signal while
+                 keeping each PR small enough to fit a single review pass
+
+prs:
+  - number: 35567
+    repo: dotCMS/core
+    title: "fix(unique-fields): remove @CloseDBIfOpened to restore atomicity with contentlet save"
+    author: fabrizzio-dotCMS
+    merged_at: "2026-05-05T17:45:06Z"
+    merge_commit: 922996001a7e092e2a591db45b74d7603d085117
+    base_ref: main
+    head_ref: fix/unique-fields-atomic-with-contentlet-save
+    additions: 0
+    deletions: 3
+    changed_files: 1
+    surface: backend
+    change_type: bug_fix
+    security_signal: false
+    why: >-
+      3-line concurrency/transaction fix. Tests the reviewer's ability to
+      reason about transactional semantics from removed annotations alone —
+      a class of finding that LLM reviewers commonly miss. Smallest possible
+      diff; an ideal floor case for the bake-off.
+
+  - number: 35509
+    repo: dotCMS/core
+    title: "fix(content): enforce anonymous access restrictions for content references endpoints"
+    author: erickgonzalez
+    merged_at: "2026-04-30T15:40:11Z"
+    merge_commit: 89f68df8cd5b5e1c83c638092548dfecd0b8c23a
+    base_ref: main
+    head_ref: issue-30584-fix-permissions-references
+    additions: 64
+    deletions: 2
+    changed_files: 3
+    surface: backend
+    change_type: security
+    security_signal: true
+    why: >-
+      AuthN/AuthZ fix on a REST endpoint with paired OpenAPI + integration-test
+      changes. Forces the reviewer to cross-check spec, implementation, and
+      test coverage in one diff. Direct exercise of the security-relevant
+      finding class.
+
+  - number: 35498
+    repo: dotCMS/core
+    title: "fix(rest-api): disable Jersey WADL descriptor endpoint (#34786)"
+    author: dsilvam
+    merged_at: "2026-04-30T19:40:17Z"
+    merge_commit: fec3bfeb56251911ebf21f566141e1b356b7b695
+    base_ref: main
+    head_ref: issue-34786-disable-wadl-endpoint
+    additions: 20
+    deletions: 11
+    changed_files: 3
+    surface: backend
+    change_type: security
+    security_signal: true
+    why: >-
+      Hardening change disabling an information-disclosure surface
+      (Jersey WADL). Tiny diff, high signal — the reviewer should affirm the
+      hardening intent without flagging spurious "removed feature" regressions.
+
+  - number: 35458
+    repo: dotCMS/core
+    title: "fix(permissions): propagate role revocation through short-term permission cache"
+    author: swicken
+    merged_at: "2026-04-27T15:11:42Z"
+    merge_commit: 61d6d1abdf8abb18a84887e3f8a2a34501b5bfee
+    base_ref: main
+    head_ref: fix/role-revocation-permission-cache
+    additions: 300
+    deletions: 3
+    changed_files: 4
+    surface: backend
+    change_type: security
+    security_signal: true
+    why: >-
+      Cache-invalidation bug in the permission system — classically the
+      hardest class of bug for LLM reviewers (state synchronization across a
+      cache + factory + integration test). Selected to stress the reviewer's
+      cross-file reasoning without being so large that diff context overflows.
+
+  - number: 35491
+    repo: dotCMS/core
+    title: "fix(content): replace unbounded query loop with LIMIT-1 DB call in validateRelationships() (#35489)"
+    author: fabrizzio-dotCMS
+    merged_at: "2026-05-05T13:36:33Z"
+    merge_commit: 467b27607aec3df2a1520a9ab35dd83fef624a88
+    base_ref: main
+    head_ref: fix/issue-35489-validate-relationships-limit
+    additions: 184
+    deletions: 25
+    changed_files: 2
+    surface: backend
+    change_type: performance
+    security_signal: false
+    why: >-
+      Performance bug — replacing an unbounded loop with a LIMIT-1 query.
+      The reviewer should affirm the perf rationale and verify the new query
+      preserves correctness; a strong test of "praise legitimate fixes
+      without inventing new objections" (FP discipline).
+
+  - number: 35469
+    repo: dotCMS/core
+    title: "fix(block-editor): guard StoryBlock JSON parsing against non-object scalars"
+    author: fmontes
+    merged_at: "2026-04-27T20:36:25Z"
+    merge_commit: a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0
+    base_ref: main
+    head_ref: fmontes/content-search-fix
+    additions: 204
+    deletions: 31
+    changed_files: 3
+    surface: backend
+    change_type: bug_fix
+    security_signal: false
+    why: >-
+      Defensive parsing against malformed input — a representative
+      "input validation" finding class. Includes paired transformer +
+      integration test, so the reviewer should confirm coverage maps to
+      the new guard.
+
+  - number: 35518
+    repo: dotCMS/core
+    title: "refactor(uve): remove duplicate copy URL button from editor toolbar"
+    author: zJaaal
+    merged_at: "2026-04-30T17:56:55Z"
+    merge_commit: f31e33c1d2280fea6a3b7d9a277c14fb51053e6c
+    base_ref: main
+    head_ref: 35517-task-uve-remove-duplicate-copy-url-button
+    additions: 1
+    deletions: 78
+    changed_files: 2
+    surface: frontend
+    change_type: refactor
+    security_signal: false
+    why: >-
+      Pure deletion refactor on the frontend (Angular component HTML + TS).
+      Tests whether the reviewer can recognize a clean "remove dead UI"
+      change without inventing missing-test or behavior-regression
+      complaints — the canonical FP trap for refactor PRs.
+
+  - number: 35449
+    repo: dotCMS/core
+    title: "refactor: migrate from Material Icons to Material Symbols Outlined"
+    author: rjvelazco
+    merged_at: "2026-04-24T21:23:35Z"
+    merge_commit: 76fb121bddeac5943fde9060014546a984dd6a5e
+    base_ref: main
+    head_ref: issue-35447-replace-material-icons-with-material-symbols-in-core-web
+    additions: 251
+    deletions: 211
+    changed_files: 71
+    surface: frontend
+    change_type: refactor
+    security_signal: false
+    why: >-
+      Mechanical multi-file refactor (71 files). Stresses the reviewer's
+      large-diff handling, summarization discipline, and ability to skip
+      per-file noise on a uniform rename. Caps the upper end of our diff-size
+      distribution without overflowing context.
+
+  - number: 35465
+    repo: dotCMS/core
+    title: "feat(content-drive): chip-style filter component for toolbar"
+    author: zJaaal
+    merged_at: "2026-04-28T19:45:54Z"
+    merge_commit: 855c7d5ce8522b2bfdd0b512ade9f641ec198280
+    base_ref: main
+    head_ref: 33524-task-create-new-chip-like-component-for-content-drive-filters
+    additions: 267
+    deletions: 7
+    changed_files: 6
+    surface: frontend
+    change_type: feature
+    security_signal: false
+    why: >-
+      Net-new Angular feature with a paired component spec. Covers the
+      "new code path with tests" feature class, on the frontend stack
+      where dotCMS reviewers expect framework-aware findings (signals,
+      change detection, accessibility).
+
+  - number: 35522
+    repo: dotCMS/core
+    title: "ci: extract rollback safety check to dedicated workflow"
+    author: erickgonzalez
+    merged_at: "2026-04-30T18:31:59Z"
+    merge_commit: f495ee3b148512acdaabccccbea6d5650a205998
+    base_ref: main
+    head_ref: issue-35396-improve-ai-safety-rollback
+    additions: 133
+    deletions: 58
+    changed_files: 2
+    surface: infra
+    change_type: infra
+    security_signal: true
+    why: >-
+      Pure GitHub Actions YAML change — exercises the reviewer on infra
+      DSL where false positives about "missing tests" or "unhandled errors"
+      are common. Carries security_signal=true because it touches the
+      AI-orchestrator rollback gate.

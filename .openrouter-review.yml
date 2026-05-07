@@ -1,0 +1,23 @@
+# OpenRouter Code Review Action — model configuration
+#
+# This file is the single source of truth for which OpenRouter model slugs the
+# action runs for review and act. Edit a value here and the next run picks it
+# up — no Python or workflow change required.
+#
+# Slug format follows OpenRouter's catalog (e.g. anthropic/claude-opus-4.7,
+# openai/gpt-5.4, google/gemini-2.5-pro). Append :online to enable the routed
+# web-search variant when web_search_mode is "live".
+#
+# Both blocks are optional. Missing keys fall back to action defaults.
+#
+# To swap the model used for inline PR review, edit `review.model` below.
+# To swap the model aider uses for autonomous edits, edit `act.model`.
+
+review:
+  model: anthropic/claude-opus-4.7
+  reasoning_effort: medium       # minimal | low | medium | high
+  web_search_mode: live          # disabled | cached | live
+
+act:
+  model: anthropic/claude-opus-4.7
+  reasoning_effort: medium

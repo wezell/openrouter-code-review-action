@@ -1,0 +1,94 @@
+{
+  "diff_signal": {
+    "additions": 204,
+    "base_ref": "main",
+    "change_type": "bug_fix",
+    "changed_files": 3,
+    "deletions": 31,
+    "head_ref": "fmontes/content-search-fix",
+    "languages": [
+      "java_or_kotlin",
+      "tests"
+    ],
+    "loc_changed": 235,
+    "security_signal": false,
+    "slots": [
+      "real_bug_present"
+    ],
+    "surface": "backend"
+  },
+  "eval_id": "dotcms-core-35469",
+  "findings": [],
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "head_sha": "a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0",
+  "labeling": {
+    "solo_labeled": null,
+    "status": "pending",
+    "tolerance_lines": 3
+  },
+  "match_candidates": [],
+  "pr_id": "pr-35469",
+  "pr_number": 35469,
+  "repo": "dotCMS/core",
+  "runs": {
+    "codex": {
+      "artifact_path": "eval/runs/dotcms-core-35469/codex.json",
+      "capture_status": "pending",
+      "captured_at": null,
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0",
+      "head_sha_matches": true,
+      "model": "gpt-5.4",
+      "notes": "Live capture skipped: GITHUB_TOKEN not set",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "disabled"
+    },
+    "openrouter": {
+      "artifact_path": "evaluation/bakeoff/runs/pr-35469/openrouter.json",
+      "capture_status": "skipped_dry_run",
+      "captured_at": "2026-05-07T02:20:22Z",
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0",
+      "head_sha_matches": true,
+      "model": "anthropic/claude-opus-4.7",
+      "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    }
+  },
+  "schema_doc": "evaluation/bakeoff/comparison/README.md",
+  "schema_version": "1",
+  "selection_rationale": "Defensive parsing against malformed input \u2014 a representative \"input validation\" finding class. Includes paired transformer + integration test, so the reviewer should confirm coverage maps to the new guard.",
+  "title": "fix(block-editor): guard StoryBlock JSON parsing against non-object scalars"
+}

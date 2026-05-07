@@ -1,0 +1,26 @@
+{
+  "capture": {
+    "captured_at": null,
+    "command": "python -m eval.run_codex_baseline --pr-id dotcms-core-35458",
+    "notes": "Live capture skipped: GITHUB_TOKEN not set",
+    "runner_version": "1",
+    "status": "pending"
+  },
+  "head_sha": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+  "model": "gpt-5.4",
+  "posted": {
+    "inline_ids": [],
+    "posting_outcome": {
+      "batch_submitted": 0,
+      "per_comment_fallback": 0,
+      "skipped_after_422": 0
+    },
+    "summary_id": null
+  },
+  "pr_id": "dotcms-core-35458",
+  "prior_review_state": null,
+  "reasoning_effort": "high",
+  "review_run_result": null,
+  "run": "codex",
+  "web_search_mode": "disabled"
+}

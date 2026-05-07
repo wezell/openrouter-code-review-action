@@ -1,0 +1,96 @@
+{
+  "diff_signal": {
+    "additions": 267,
+    "base_ref": "main",
+    "change_type": "feature",
+    "changed_files": 6,
+    "deletions": 7,
+    "head_ref": "33524-task-create-new-chip-like-component-for-content-drive-filters",
+    "languages": [
+      "typescript_or_javascript",
+      "tests"
+    ],
+    "loc_changed": 274,
+    "security_signal": false,
+    "slots": [
+      "real_bug_present",
+      "multiline_suggestion",
+      "web_search_relevant"
+    ],
+    "surface": "frontend"
+  },
+  "eval_id": "dotcms-core-35465",
+  "findings": [],
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "head_sha": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+  "labeling": {
+    "solo_labeled": null,
+    "status": "pending",
+    "tolerance_lines": 3
+  },
+  "match_candidates": [],
+  "pr_id": "pr-35465",
+  "pr_number": 35465,
+  "repo": "dotCMS/core",
+  "runs": {
+    "codex": {
+      "artifact_path": "eval/runs/dotcms-core-35465/codex.json",
+      "capture_status": "pending",
+      "captured_at": null,
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+      "head_sha_matches": true,
+      "model": "gpt-5.4",
+      "notes": "Live capture skipped: GITHUB_TOKEN not set",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    },
+    "openrouter": {
+      "artifact_path": "evaluation/bakeoff/runs/pr-35465/openrouter.json",
+      "capture_status": "skipped_dry_run",
+      "captured_at": "2026-05-07T02:20:24Z",
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+      "head_sha_matches": true,
+      "model": "anthropic/claude-opus-4.7",
+      "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    }
+  },
+  "schema_doc": "evaluation/bakeoff/comparison/README.md",
+  "schema_version": "1",
+  "selection_rationale": "Net-new Angular feature with a paired component spec. Covers the \"new code path with tests\" feature class, on the frontend stack where dotCMS reviewers expect framework-aware findings (signals, change detection, accessibility).",
+  "title": "feat(content-drive): chip-style filter component for toolbar"
+}

@@ -1,0 +1,4 @@
+codex-python==1.122.0
+PyGithub==2.8.1
+pydantic==2.12.5
+PyYAML==6.0.3

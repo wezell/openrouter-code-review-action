@@ -1,0 +1,93 @@
+{
+  "diff_signal": {
+    "additions": 1,
+    "base_ref": "main",
+    "change_type": "refactor",
+    "changed_files": 2,
+    "deletions": 78,
+    "head_ref": "35517-task-uve-remove-duplicate-copy-url-button",
+    "languages": [
+      "typescript_or_javascript"
+    ],
+    "loc_changed": 79,
+    "security_signal": false,
+    "slots": [
+      "clean_diff"
+    ],
+    "surface": "frontend"
+  },
+  "eval_id": "dotcms-core-35518",
+  "findings": [],
+  "generated_at": "2026-05-07T02:22:26Z",
+  "generator": "evaluation/bakeoff/build_comparison_set.py",
+  "head_sha": "f31e33c1d2280fea6a3b7d9a277c14fb51053e6c",
+  "labeling": {
+    "solo_labeled": null,
+    "status": "pending",
+    "tolerance_lines": 3
+  },
+  "match_candidates": [],
+  "pr_id": "pr-35518",
+  "pr_number": 35518,
+  "repo": "dotCMS/core",
+  "runs": {
+    "codex": {
+      "artifact_path": "eval/runs/dotcms-core-35518/codex.json",
+      "capture_status": "pending",
+      "captured_at": null,
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "f31e33c1d2280fea6a3b7d9a277c14fb51053e6c",
+      "head_sha_matches": true,
+      "model": "gpt-5.4",
+      "notes": "Live capture skipped: GITHUB_TOKEN not set",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "disabled"
+    },
+    "openrouter": {
+      "artifact_path": "evaluation/bakeoff/runs/pr-35518/openrouter.json",
+      "capture_status": "skipped_dry_run",
+      "captured_at": "2026-05-07T02:20:22Z",
+      "carried_forward_count": 0,
+      "head_sha_at_capture": "f31e33c1d2280fea6a3b7d9a277c14fb51053e6c",
+      "head_sha_matches": true,
+      "model": "anthropic/claude-opus-4.7",
+      "notes": "Dry-run: diff fetched and OpenRouter request payload built; no POST issued. Re-run with --mode live to populate review_run_result.",
+      "present": true,
+      "reasoning_effort": "medium",
+      "summary": {
+        "by_severity": {
+          "P0": 0,
+          "P1": 0,
+          "P2": 0,
+          "P3": 0,
+          "unknown": 0
+        },
+        "carried_forward_count": 0,
+        "findings_count": 0,
+        "overall_confidence_score": null,
+        "overall_correctness": null,
+        "overall_explanation": null
+      },
+      "web_search_mode": "live"
+    }
+  },
+  "schema_doc": "evaluation/bakeoff/comparison/README.md",
+  "schema_version": "1",
+  "selection_rationale": "Pure deletion refactor on the frontend (Angular component HTML + TS). Tests whether the reviewer can recognize a clean \"remove dead UI\" change without inventing missing-test or behavior-regression complaints \u2014 the canonical FP trap for refactor PRs.",
+  "title": "refactor(uve): remove duplicate copy URL button from editor toolbar"
+}

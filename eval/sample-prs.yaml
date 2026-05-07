@@ -1,0 +1,241 @@
+# Sample PR registry for the Codex → OpenRouter bake-off.
+#
+# Selection criteria, labeling rubric, and FP definition live in
+# eval/baseline-methodology.md. This file is the *registry* — the fixed
+# list of (repo, pr, head_sha) triples that every bake-off scores
+# against.
+#
+# Sub-AC 1.1.1 selected the 10-PR sample; the long-form rationale lives
+# at evaluation/bakeoff/sample-prs.{md,yml}. This file is the canonical
+# machine-readable registry that downstream bake-off Sub-ACs (1.2 Codex
+# baseline; 1.3 OpenRouter run; 1.4 labeling; 1.5 scoring) consume,
+# matching the path referenced in baseline-methodology.md §1.5 / §4.1.
+
+# Ordered slot keys mirrored from baseline-methodology.md §1.3.
+# At least these slots must be covered across the populated `prs:` list.
+required_slots:
+  - real_bug_present       # ≥ 2 PRs
+  - clean_diff             # ≥ 2 PRs
+  - continuation           # ≥ 1 PR (synchronize push after prior review)
+  - force_push_ancestry    # ≥ 1 PR (head SHA breaks reviewed-SHA ancestry)
+  - web_search_relevant    # ≥ 1 PR (CVE / deprecated API / dep bump)
+  - multiline_suggestion   # ≥ 1 PR
+
+# Required language coverage across the populated `prs:` list (§1.2 rule 6).
+required_language_coverage:
+  - python
+  - typescript_or_javascript
+  - java_or_kotlin
+  - yaml_action_or_config
+  - tests
+
+# Hard bounds enforced by reviewers when populating the registry.
+size_bounds:
+  min_loc_changed: 20
+  max_loc_changed: 1500
+
+# Sample size bounds (per seed.yaml AC 1).
+sample_size:
+  min: 5
+  max: 10
+
+# ---------------------------------------------------------------------------
+# Concrete sample. Synced from Sub-AC 1.1.1 selection at
+# evaluation/bakeoff/sample-prs.yml. Each entry is pinned by `head_sha`
+# (the PR's merge commit) so every bake-off run reviews the identical
+# diff regardless of subsequent main-branch activity.
+# ---------------------------------------------------------------------------
+prs:
+  - id: dotcms-core-35567
+    repo: dotCMS/core
+    pr: 35567
+    head_sha: 922996001a7e092e2a591db45b74d7603d085117
+    slots:
+      - real_bug_present
+      - multiline_suggestion
+    languages:
+      - java_or_kotlin
+    loc_changed: 3
+    web_search_mode_for_run: disabled
+    reasoning_effort_for_run: medium
+    notes: >-
+      3-line concurrency/transaction fix. Removes @CloseDBIfOpened to
+      restore atomicity with contentlet save. Reviewer must reason about
+      transactional semantics from an absence — a class of finding LLM
+      reviewers commonly miss. Floor case for diff size.
+
+  - id: dotcms-core-35509
+    repo: dotCMS/core
+    pr: 35509
+    head_sha: 89f68df8cd5b5e1c83c638092548dfecd0b8c23a
+    slots:
+      - real_bug_present
+      - multiline_suggestion
+    languages:
+      - java_or_kotlin
+      - tests
+      - yaml_action_or_config
+    loc_changed: 66
+    web_search_mode_for_run: disabled
+    reasoning_effort_for_run: medium
+    notes: >-
+      Security: enforce anonymous-access restrictions on content-references
+      endpoints. Cross-checks OpenAPI spec, REST implementation, and
+      integration test coverage in one diff.
+
+  - id: dotcms-core-35498
+    repo: dotCMS/core
+    pr: 35498
+    head_sha: fec3bfeb56251911ebf21f566141e1b356b7b695
+    slots:
+      - clean_diff
+    languages:
+      - java_or_kotlin
+      - tests
+    loc_changed: 31
+    web_search_mode_for_run: cached
+    reasoning_effort_for_run: medium
+    notes: >-
+      Security hardening: disable Jersey WADL descriptor endpoint. Tiny
+      diff, high signal — reviewer should affirm the hardening intent
+      without flagging spurious "removed feature" regressions. Anchors
+      the FP-discipline measurement on a security-relevant clean diff.
+
+  - id: dotcms-core-35458
+    repo: dotCMS/core
+    pr: 35458
+    head_sha: 61d6d1abdf8abb18a84887e3f8a2a34501b5bfee
+    slots:
+      - real_bug_present
+      - continuation
+    languages:
+      - java_or_kotlin
+      - tests
+    loc_changed: 303
+    web_search_mode_for_run: disabled
+    reasoning_effort_for_run: high
+    notes: >-
+      Cache-invalidation bug in the permission system — classically the
+      hardest class of bug for LLM reviewers (state synchronization
+      across cache + factory + integration test). Larger diff that
+      stresses cross-file reasoning. Use as the continuation-case
+      anchor by re-running after a synthetic synchronize push.
+
+  - id: dotcms-core-35491
+    repo: dotCMS/core
+    pr: 35491
+    head_sha: 467b27607aec3df2a1520a9ab35dd83fef624a88
+    slots:
+      - real_bug_present
+      - multiline_suggestion
+    languages:
+      - java_or_kotlin
+      - tests
+    loc_changed: 209
+    web_search_mode_for_run: disabled
+    reasoning_effort_for_run: medium
+    notes: >-
+      Performance bug — replacing an unbounded loop with a LIMIT-1
+      query. Reviewer should affirm the perf rationale and verify
+      correctness. Tests "praise legitimate fixes without inventing
+      objections" (FP discipline on a real bug fix).
+
+  - id: dotcms-core-35469
+    repo: dotCMS/core
+    pr: 35469
+    head_sha: a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0
+    slots:
+      - real_bug_present
+    languages:
+      - java_or_kotlin
+      - tests
+    loc_changed: 235
+    web_search_mode_for_run: disabled
+    reasoning_effort_for_run: medium
+    notes: >-
+      Defensive parsing — guard StoryBlock JSON against non-object
+      scalars. Representative input-validation finding class. Includes
+      paired transformer + integration test, so reviewer should confirm
+      coverage maps to the new guard.
+
+  - id: dotcms-core-35518
+    repo: dotCMS/core
+    pr: 35518
+    head_sha: f31e33c1d2280fea6a3b7d9a277c14fb51053e6c
+    slots:
+      - clean_diff
+    languages:
+      - typescript_or_javascript
+    loc_changed: 79
+    web_search_mode_for_run: disabled
+    reasoning_effort_for_run: medium
+    notes: >-
+      Pure deletion refactor on the frontend (Angular HTML + TS) —
+      remove duplicate copy-URL button. Tests whether the reviewer can
+      recognize a clean "remove dead UI" change without inventing
+      missing-test or behavior-regression complaints. Canonical FP trap
+      for refactor PRs.
+
+  - id: dotcms-core-35449
+    repo: dotCMS/core
+    pr: 35449
+    head_sha: 76fb121bddeac5943fde9060014546a984dd6a5e
+    slots:
+      - clean_diff
+      - force_push_ancestry
+    languages:
+      - typescript_or_javascript
+    loc_changed: 462
+    web_search_mode_for_run: cached
+    reasoning_effort_for_run: medium
+    notes: >-
+      Mechanical multi-file refactor (71 files) — Material Icons →
+      Material Symbols Outlined. Stresses large-diff handling and
+      summarization discipline. Caps the upper end of diff-size
+      distribution. Use to exercise the force-push fallback by re-running
+      after rewriting head_sha to a non-ancestor commit on the same diff.
+
+  - id: dotcms-core-35465
+    repo: dotCMS/core
+    pr: 35465
+    head_sha: 855c7d5ce8522b2bfdd0b512ade9f641ec198280
+    slots:
+      - real_bug_present
+      - multiline_suggestion
+      - web_search_relevant
+    languages:
+      - typescript_or_javascript
+      - tests
+    loc_changed: 274
+    web_search_mode_for_run: live
+    reasoning_effort_for_run: medium
+    notes: >-
+      Net-new Angular feature with paired component spec — chip filter
+      for content-drive toolbar. New code path with tests; framework-
+      aware findings expected (signals, change detection, accessibility).
+      Run with web_search_mode=live so the :online variant exercises
+      framework-doc lookups for current Angular best practices.
+
+  - id: dotcms-core-35522
+    repo: dotCMS/core
+    pr: 35522
+    head_sha: f495ee3b148512acdaabccccbea6d5650a205998
+    slots:
+      - clean_diff
+    languages:
+      - yaml_action_or_config
+    loc_changed: 191
+    web_search_mode_for_run: cached
+    reasoning_effort_for_run: medium
+    notes: >-
+      Pure GitHub Actions YAML change — extract rollback-safety check
+      to dedicated workflow. Exercises the reviewer on infra DSL where
+      false positives about "missing tests" or "unhandled errors" are
+      common. Touches the AI-orchestrator rollback gate (security_signal).
+
+# ---------------------------------------------------------------------------
+# Removal log — record (don't silently drop) any PR that's removed from the
+# sample after first inclusion, per §1.5 of the methodology.
+# ---------------------------------------------------------------------------
+removed:
+  []

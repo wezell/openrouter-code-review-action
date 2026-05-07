@@ -1,0 +1,49 @@
+{
+  "aggregate": {
+    "by_quality": {
+      "exact_line": 0,
+      "keyword_only": 0,
+      "line_proximity": 0,
+      "none": 0
+    },
+    "by_severity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "unknown": 0
+    },
+    "matched_fp": 0,
+    "matched_tp": 0,
+    "total": 0,
+    "unmatched": 0
+  },
+  "capture_status": "pending",
+  "dataset_coverage": {
+    "by_label_matched": {
+      "FP": 0,
+      "TP": 0
+    },
+    "by_label_total": {
+      "FP": 2,
+      "TP": 1
+    },
+    "dataset_matched": 0,
+    "dataset_total": 3,
+    "dataset_unmatched_ids": [
+      "gt-35522-001",
+      "gt-35522-002",
+      "gt-35522-003"
+    ]
+  },
+  "findings_scored": [],
+  "generated_at": "2026-05-07T02:21:59Z",
+  "generator": "eval/score_codex_baseline.py",
+  "head_sha": "f495ee3b148512acdaabccccbea6d5650a205998",
+  "notes": "Codex baseline capture is 'pending'; nothing to score yet. Live capture skipped: GITHUB_TOKEN not set",
+  "pr_id": "dotcms-core-35522",
+  "run": "codex",
+  "schema_version": "1",
+  "status": "skipped",
+  "tolerance_lines": 3
+}
