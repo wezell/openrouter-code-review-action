@@ -285,3 +285,159 @@ def match_findings(
         codex_only=codex_only,
         openrouter_only=or_only,
     )
+
+
+# ---------------------------------------------------------------------------
+# Unified CLI (Sub-AC 3.5)
+# ---------------------------------------------------------------------------
+#
+# ``eval.overlap_score`` is the single import surface external code uses to
+# reach the matcher. Sub-AC 3.5 makes it the single *CLI* surface too: one
+# command computes the per-PR ``eval/runs/<pr_id>/overlap.json`` records
+# (Sub-AC 3.3 persistence) **and** the sample-wide
+# ``eval/overlap_aggregate.json`` rollup (Sub-AC 3.4 aggregate math), with a
+# shared ``--check`` drift mode reviewers can wire into CI without remembering
+# which sibling module owns which artifact.
+#
+# The CLI is a thin orchestrator — the per-PR layer lives in
+# ``eval.overlap_metrics`` and the aggregate layer lives in
+# ``eval.overlap_aggregate``. Importing them lazily (inside ``main``) keeps the
+# matcher module itself dependency-light: a caller that only wants
+# ``match_findings`` does not pay for the fixture-loader / argparse / JSON I/O
+# code path.
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Drive the full overlap pipeline from a single CLI.
+
+    Modes (mutually exclusive at the artifact level — both layers always
+    run, but only one of write / check is selected):
+
+    * default          — write per-PR ``overlap.json`` records, then write
+                         the sample-wide ``overlap_aggregate.json``.
+    * ``--check``      — rebuild both layers in memory and exit non-zero
+                         on drift. No files are written.
+
+    ``--pr-id`` filters the per-PR layer; the aggregate always rolls up the
+    full sample-prs registry so a partial filter cannot silently produce a
+    misleading sample-wide score.
+    """
+    import argparse
+    import sys
+
+    # Lazy imports: keep the matcher module import-light for callers that
+    # only want ``match_findings``.
+    from eval import overlap_aggregate, overlap_metrics
+
+    parser = argparse.ArgumentParser(
+        prog="eval.overlap_score",
+        description=(
+            "Run the full overlap pipeline (Sub-AC 3.5): compute per-PR "
+            "precision/recall/F1 records under eval/runs/<pr_id>/overlap.json "
+            "and the sample-wide rollup at eval/overlap_aggregate.json. "
+            "Use --check in CI to detect drift."
+        ),
+    )
+    parser.add_argument(
+        "--pr-id",
+        action="append",
+        dest="pr_ids",
+        metavar="ID",
+        help=(
+            "Compute only this run id (e.g. ``dotcms-core-35449``). May be "
+            "repeated. Filters the per-PR layer only — the aggregate always "
+            "rolls up the full sample registry."
+        ),
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help=(
+            "Do not write; rebuild both layers and exit non-zero if any "
+            "on-disk record differs from the rebuild. Use in CI."
+        ),
+    )
+    parser.add_argument(
+        "--tolerance",
+        type=int,
+        default=LINE_PROXIMITY_TOLERANCE,
+        help=(
+            f"± lines tolerance for proximity matching "
+            f"(default: {LINE_PROXIMITY_TOLERANCE})."
+        ),
+    )
+    parser.add_argument(
+        "--skip-aggregate",
+        action="store_true",
+        help=(
+            "Skip the aggregate layer; only run per-PR persistence/check. "
+            "Useful when iterating on a single PR fixture."
+        ),
+    )
+    args = parser.parse_args(argv)
+
+    if args.tolerance < 0:
+        parser.error(f"--tolerance must be >= 0 (got {args.tolerance})")
+
+    discovered = overlap_metrics.discover_runs_ids()
+    if args.pr_ids:
+        unknown = [pid for pid in args.pr_ids if pid not in discovered]
+        if unknown:
+            sys.stderr.write(
+                "unknown pr_id(s): "
+                + ", ".join(unknown)
+                + "\nKnown: "
+                + (", ".join(discovered) or "(none)")
+                + "\n"
+            )
+            return 2
+        targets = list(args.pr_ids)
+    else:
+        targets = discovered
+
+    if args.check:
+        all_drift: list[str] = []
+        if targets:
+            all_drift.extend(
+                overlap_metrics.check_overlap(targets, tolerance=args.tolerance)
+            )
+        if not args.skip_aggregate:
+            all_drift.extend(
+                overlap_aggregate.check_aggregate(tolerance=args.tolerance)
+            )
+        if all_drift:
+            sys.stderr.write(
+                "overlap pipeline drifted from rebuild:\n  - "
+                + "\n  - ".join(all_drift)
+                + "\nRe-run `python -m eval.overlap_score`\n"
+            )
+            return 1
+        per_pr_count = len(targets)
+        agg_msg = "" if args.skip_aggregate else " + aggregate"
+        print(f"overlap pipeline in sync ({per_pr_count} PRs{agg_msg})")
+        return 0
+
+    if not targets:
+        sys.stderr.write(
+            "[ok] no eval/runs/<pr_id>/ directories found; "
+            "nothing to do for per-PR layer\n"
+        )
+    written_per_pr: list[str] = []
+    for runs_id in targets:
+        path = overlap_metrics.write_overlap(runs_id, tolerance=args.tolerance)
+        written_per_pr.append(str(path))
+
+    if args.skip_aggregate:
+        print(f"wrote {len(written_per_pr)} overlap.json record(s)")
+        return 0
+
+    agg_path = overlap_aggregate.write_aggregate(tolerance=args.tolerance)
+    print(
+        f"wrote {len(written_per_pr)} overlap.json record(s) "
+        f"and aggregate at {agg_path}"
+    )
+    return 0
+
+
+if __name__ == "__main__":  # pragma: no cover - script entry
+    raise SystemExit(main())
