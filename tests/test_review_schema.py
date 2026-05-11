@@ -17,6 +17,7 @@ from cli.core.exceptions import ReviewContractError
 from cli.core.models import (
     CARRIED_FORWARD_COMMENT_SCHEMA,
     OPENROUTER_REVIEW_SCHEMA_NAME,
+    REVIEW_COMMENT_SIDES,
     REVIEW_FINDING_LOCATION_SCHEMA,
     REVIEW_FINDING_SCHEMA,
     REVIEW_OUTPUT_SCHEMA,
@@ -112,6 +113,37 @@ def test_findings_items_use_inline_finding_schema() -> None:
     assert isinstance(items, dict)
     assert items["type"] == "object"
     assert set(items["properties"].keys()) == set(REVIEW_FINDING_SCHEMA["properties"].keys())
+
+
+def test_finding_schema_enforces_path_line_side_body() -> None:
+    """Sub-AC 3.1: each inline comment must carry path, line, side, body."""
+    properties = REVIEW_FINDING_SCHEMA["properties"]
+    assert isinstance(properties, dict)
+
+    # body is a top-level string field.
+    assert properties["body"] == {"type": "string"}
+
+    # path + line are nested under code_location to preserve the existing
+    # contract; the schema must require both.
+    location = properties["code_location"]
+    assert isinstance(location, dict)
+    assert location["type"] == "object"
+    assert "absolute_file_path" in location["properties"]
+    assert "line_range" in location["properties"]
+    line_range = location["properties"]["line_range"]
+    assert isinstance(line_range, dict)
+    assert set(line_range["properties"].keys()) == {"start", "end"}
+
+    # side is the new field — required and constrained to LEFT / RIGHT
+    # (or null for "let the poster default to RIGHT").
+    side_field = properties["side"]
+    assert isinstance(side_field, dict)
+    assert side_field["type"] == ["string", "null"]
+    assert set(value for value in side_field["enum"] if isinstance(value, str)) == set(
+        REVIEW_COMMENT_SIDES
+    )
+    assert None in side_field["enum"]
+    assert "side" in REVIEW_FINDING_SCHEMA["required"]
 
 
 def test_nullable_fields_use_array_form() -> None:
@@ -273,3 +305,58 @@ def test_validate_review_payload_accepts_null_optional_numbers() -> None:
     assert result.overall_confidence_score is None
     assert result.findings[0].confidence_score is None
     assert result.findings[0].priority is None
+
+
+# ---------------------------------------------------------------------------
+# `side` field — Sub-AC 3.1
+# ---------------------------------------------------------------------------
+
+
+def test_validate_review_finding_accepts_explicit_side() -> None:
+    finding = _conformant_payload()["findings"][0]
+    finding["side"] = "LEFT"
+    parsed = validate_review_finding(finding)
+    assert parsed.side == "LEFT"
+
+
+def test_validate_review_finding_normalises_side_case() -> None:
+    finding = _conformant_payload()["findings"][0]
+    finding["side"] = "right"
+    parsed = validate_review_finding(finding)
+    assert parsed.side == "RIGHT"
+
+
+def test_validate_review_finding_rejects_unknown_side() -> None:
+    finding = _conformant_payload()["findings"][0]
+    finding["side"] = "MIDDLE"
+    with pytest.raises(ReviewContractError, match="side"):
+        validate_review_finding(finding)
+
+
+def test_validate_review_finding_rejects_non_string_side() -> None:
+    finding = _conformant_payload()["findings"][0]
+    finding["side"] = 1
+    with pytest.raises(ReviewContractError, match="side"):
+        validate_review_finding(finding)
+
+
+def test_validate_review_finding_treats_missing_side_as_none() -> None:
+    """Lenient parser: legacy fixtures without ``side`` still load (=> None)."""
+    finding = _conformant_payload()["findings"][0]
+    finding.pop("side", None)
+    parsed = validate_review_finding(finding)
+    assert parsed.side is None
+
+
+def test_validate_review_finding_accepts_null_side() -> None:
+    finding = _conformant_payload()["findings"][0]
+    finding["side"] = None
+    parsed = validate_review_finding(finding)
+    assert parsed.side is None
+
+
+def test_review_finding_as_dict_round_trips_side() -> None:
+    finding = _conformant_payload()["findings"][0]
+    finding["side"] = "LEFT"
+    parsed = validate_review_finding(finding)
+    assert parsed.as_dict()["side"] == "LEFT"

@@ -9,6 +9,14 @@
 
 ## Build, Test, and Development Commands
 - `make lint` – Ruff lint + autofix.
+- `make eval-overlap` – Regenerate the bake-off overlap pipeline and
+  enforce the 80% micro-recall parity gate. CI uses the read-only
+  variant `make eval-overlap-check`.
+- `make eval-parity-report` / `make eval-parity-report-check` – Build
+  or drift-check the consolidated `eval/parity_report.md(+json)`
+  artifact CI uploads on every run. Full rationale, knobs, and
+  failure-triage guidance live in `CONTRIBUTING.md` and
+  `eval/README.md` ("Parity Gate" section).
 - Run locally: `GITHUB_TOKEN=... OPENAI_API_KEY=... PYTHONPATH=. python -m cli.main --repo owner/repo --pr 123 [--mode review|act] [--dry-run] [--debug 1]`.
 
 ## Coding Style & Naming Conventions

@@ -1,20 +1,26 @@
-name: "Codex Code Review & Actor"
-description: "Run Codex to review a PR and post review comments"
-author: "OpenAI Codex"
+name: "OpenRouter Code Review & Actor"
+description: >-
+  Review pull requests with an OpenRouter-routed model and, on demand, apply
+  autonomous edits via aider in response to /codex comments. Models are
+  swappable via an in-repo config file with no code change.
+author: "dotCMS"
 branding:
-  icon: "search"
-  color: "blue"
+  icon: "git-pull-request"
+  color: "purple"
 
 inputs:
   mode:
     description: "Operation mode: review | act"
     required: false
     default: "review"
-  openai_api_key:
-    description: "OpenAI API key for the selected model provider"
-    required: false
   openrouter_api_key:
-    description: "OpenRouter API key used for all routed model calls"
+    description: "OpenRouter API key used for all routed model calls (required)"
+    required: true
+  openai_api_key:
+    description: >-
+      Legacy: OpenAI API key. Accepted for parity with prior installations but
+      not used by the OpenRouter review/act path. All model calls route through
+      OpenRouter.
     required: false
   config_path:
     description: >-
@@ -24,9 +30,12 @@ inputs:
     required: false
     default: ".openrouter-review.yml"
   model:
-    description: "Model to use (e.g., gpt-5, gpt-4.1-mini)"
+    description: >-
+      Per-call OpenRouter model slug override (e.g.
+      anthropic/claude-opus-4.7, openai/gpt-5.4, google/gemini-2.5-pro).
+      Normally leave unset and edit the in-repo config_path file instead.
     required: false
-    default: "gpt-5.4"
+    default: "anthropic/claude-opus-4.7"
   reasoning_effort:
     description: "Reasoning effort: minimal | low | medium | high"
     required: false

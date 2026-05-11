@@ -100,6 +100,15 @@ class ReviewFindingLocation:
         }
 
 
+# Allowed values for an inline review comment's diff side. ``RIGHT`` (the
+# new file content / additions) is the default for almost every finding;
+# ``LEFT`` is only used when the comment anchors on a deletion. The
+# OpenRouter strict schema enforces these literals on the wire; local
+# Python validation tolerates ``None`` so persisted fixtures (and
+# historical review-state JSON) without a ``side`` field still load.
+REVIEW_COMMENT_SIDES: tuple[str, ...] = ("LEFT", "RIGHT")
+
+
 @dataclass(frozen=True)
 class ReviewFinding:
     title: str
@@ -107,6 +116,10 @@ class ReviewFinding:
     confidence_score: float | None
     priority: int | None
     code_location: ReviewFindingLocation
+    # ``side`` is the GitHub inline-comment "side" field. ``None`` means
+    # "let the poster default to RIGHT" — kept nullable so fixtures and
+    # state files written before Sub-AC 3.1 added the field still parse.
+    side: str | None = None
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> ReviewFinding:
@@ -146,12 +159,32 @@ class ReviewFinding:
         if code_location is None:
             raise ReviewContractError("Review finding field 'code_location' is invalid")
 
+        # ``side`` is optional in the lenient parser path so legacy
+        # fixtures keep loading, but if present it must be one of the
+        # GitHub-accepted literals (or null).
+        side_raw = payload.get("side")
+        if side_raw is None:
+            side: str | None = None
+        elif isinstance(side_raw, str):
+            normalised = side_raw.strip().upper()
+            if normalised not in REVIEW_COMMENT_SIDES:
+                raise ReviewContractError(
+                    "Review finding field 'side' must be one of "
+                    f"{list(REVIEW_COMMENT_SIDES)} or null"
+                )
+            side = normalised
+        else:
+            raise ReviewContractError(
+                "Review finding field 'side' must be a string or null"
+            )
+
         return cls(
             title=title_raw,
             body=body_raw,
             confidence_score=confidence_score,
             priority=priority,
             code_location=code_location,
+            side=side,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -161,6 +194,7 @@ class ReviewFinding:
             "confidence_score": self.confidence_score,
             "priority": self.priority,
             "code_location": self.code_location.as_dict(),
+            "side": self.side,
         }
 
 
@@ -478,6 +512,15 @@ REVIEW_FINDING_SCHEMA: dict[str, object] = {
         "body": {"type": "string"},
         "confidence_score": {"type": ["number", "null"]},
         "priority": {"type": ["integer", "null"]},
+        # ``side`` mirrors the GitHub inline-comment "side" field — RIGHT
+        # for additions/context (default), LEFT only when the comment
+        # anchors on a deleted line. Nullable so the model can omit it
+        # for the common RIGHT-side case; the poster falls back to RIGHT
+        # whenever the value is null.
+        "side": {
+            "type": ["string", "null"],
+            "enum": [*REVIEW_COMMENT_SIDES, None],
+        },
         "code_location": REVIEW_FINDING_LOCATION_SCHEMA,
     },
     "required": [
@@ -485,6 +528,7 @@ REVIEW_FINDING_SCHEMA: dict[str, object] = {
         "body",
         "confidence_score",
         "priority",
+        "side",
         "code_location",
     ],
     "additionalProperties": False,

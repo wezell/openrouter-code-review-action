@@ -1,0 +1,61 @@
+{
+  "codex": {
+    "by_severity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "unknown": 0
+    },
+    "capture_status": "pending",
+    "findings_count": 0,
+    "model": "gpt-5.4",
+    "notes": "Live capture skipped: GITHUB_TOKEN not set"
+  },
+  "codex_only_findings": [],
+  "counts": {
+    "codex_only": 0,
+    "codex_total": 0,
+    "matched_pairs": 0,
+    "openrouter_only": 0,
+    "openrouter_total": 0
+  },
+  "deltas": {
+    "delta_by_severity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "unknown": 0
+    },
+    "delta_total": 0
+  },
+  "generated_at": "2026-05-07T15:54:33Z",
+  "generator": "eval/compare_findings.py",
+  "head_sha_baseline": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+  "head_sha_candidate": null,
+  "matches": [],
+  "openrouter": {
+    "by_severity": {
+      "P0": 0,
+      "P1": 0,
+      "P2": 0,
+      "P3": 0,
+      "unknown": 0
+    },
+    "capture_status": "missing",
+    "findings_count": 0,
+    "model": null,
+    "notes": null
+  },
+  "openrouter_only_findings": [],
+  "overlap": {
+    "overlap_ratio_codex_baseline": null,
+    "overlap_ratio_openrouter_candidate": null,
+    "severity_match_count": 0
+  },
+  "pr_id": "pr-35465",
+  "schema_version": "1",
+  "status": "pending",
+  "tolerance_lines": 3
+}

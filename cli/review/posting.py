@@ -263,21 +263,28 @@ def _build_payload_from_validated(comment: ValidatedComment) -> InlineCommentPay
 
     comment_body = f"{title}\n\n{final_body}" if final_body else title
 
+    # Honour the schema-enforced ``side`` value when the model supplied
+    # one (LEFT for deletion-anchored findings, RIGHT for additions /
+    # context). When the model omitted it (legacy fixtures, or the
+    # default RIGHT-side case), fall back to RIGHT so the post still
+    # succeeds.
+    side = comment.finding.side or "RIGHT"
+
     anchor = comment.anchor
     if isinstance(anchor, RangeAnchor):
         return InlineCommentPayload(
             body=comment_body,
             path=comment.relative_path,
-            side="RIGHT",
+            side=side,
             line=anchor.end_line,
             start_line=anchor.start_line,
-            start_side="RIGHT",
+            start_side=side,
         )
 
     return InlineCommentPayload(
         body=comment_body,
         path=comment.relative_path,
-        side="RIGHT",
+        side=side,
         line=anchor.line,
     )
 

@@ -1,0 +1,140 @@
+diff --git a/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.html b/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.html
+index a00492b0565c..1e742a989c79 100644
+--- a/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.html
++++ b/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.html
+@@ -16,44 +16,6 @@
+         <div class="flex items-center gap-1" [class.p-0]="preview || live">
+             <dot-editor-mode-selector data-testId="uve-toolbar-editor-mode-selector" />
+             <dot-ema-bookmarks [url]="$toolbar().editor.bookmarksUrl" />
+-            <p-button
+-                size="small"
+-                (click)="op.toggle($event)"
+-                [text]="true"
+-                [rounded]="true"
+-                [pTooltip]="'editpage.header.copy' | dm"
+-                tooltipPosition="bottom"
+-                icon="pi pi-copy"
+-                data-testId="uve-toolbar-copy-url">
+-                <p-popover #op [pt]="copyUrlPopoverPt">
+-                    <div class="flex flex-col divide-y divide-gray-200">
+-                        @for (url of $pageURLS(); track url.value) {
+-                            <div class="flex flex-col gap-1 py-2 first:pt-0 last:pb-0">
+-                                <span class="text-sm font-semibold text-gray-900">
+-                                    {{ url.label | dm }}:
+-                                </span>
+-                                <div class="flex min-w-0 items-center gap-2">
+-                                    <a
+-                                        [href]="url.value"
+-                                        class="block min-w-0 flex-1 truncate text-gray-900 no-underline! hover:underline"
+-                                        target="_blank"
+-                                        rel="noreferrer noopener">
+-                                        {{ url.value }}
+-                                    </a>
+-                                    <p-button
+-                                        icon="pi pi-copy"
+-                                        [text]="true"
+-                                        [rounded]="true"
+-                                        class="shrink-0"
+-                                        (cdkCopyToClipboardCopied)="triggerCopyToast()"
+-                                        [cdkCopyToClipboard]="url.value"
+-                                        data-testId="copy-url-button" />
+-                                </div>
+-                            </div>
+-                        }
+-                    </div>
+-                </p-popover>
+-            </p-button>
+             <a
+                 size="small"
+                 [text]="true"
+diff --git a/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.ts b/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.ts
+index 4a7a328c5496..164c4454b1c2 100644
+--- a/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.ts
++++ b/core-web/libs/portlets/edit-ema/portlet/src/lib/edit-ema-editor/components/dot-uve-toolbar/dot-uve-toolbar.component.ts
+@@ -1,4 +1,3 @@
+-import { ClipboardModule } from '@angular/cdk/clipboard';
+ import { HttpErrorResponse } from '@angular/common/http';
+ import {
+     ChangeDetectionStrategy,
+@@ -18,7 +17,6 @@ import { ConfirmationService, MessageService } from 'primeng/api';
+ import { ButtonModule } from 'primeng/button';
+ import { ChipModule } from 'primeng/chip';
+ import { DatePickerModule } from 'primeng/datepicker';
+-import { PopoverModule } from 'primeng/popover';
+ import { SplitButtonModule } from 'primeng/splitbutton';
+ import { ToolbarModule } from 'primeng/toolbar';
+ import { TooltipModule } from 'primeng/tooltip';
+@@ -46,8 +44,7 @@ import { PageType } from '../../../store/models';
+ import {
+     convertLocalTimeToUTC,
+     convertUTCToLocalTime,
+-    createFavoritePagesURL,
+-    createFullURL
++    createFavoritePagesURL
+ } from '../../../utils';
+ 
+ @Component({
+@@ -58,8 +55,6 @@ import {
+         ButtonModule,
+         DatePickerModule,
+         ChipModule,
+-        ClipboardModule,
+-        PopoverModule,
+         ToolbarModule,
+         TooltipModule,
+         SplitButtonModule,
+@@ -125,18 +120,6 @@ export class DotUveToolbarComponent {
+         currentLanguage: this.$currentLanguage()
+     }));
+ 
+-    readonly $pageURLS = computed<{ label: string; value: string }[]>(() => {
+-        const params = this.#store.pageParams();
+-        const site = this.#store.pageAsset()?.site;
+-
+-        return [
+-            {
+-                label: 'uve.toolbar.page.url',
+-                value: createFullURL(params, site?.identifier)
+-            }
+-        ];
+-    });
+-
+     readonly $showWorkflowActions = this.#store.$showWorkflowsActions;
+     readonly $mode = this.#store.viewMode;
+     readonly $isPreviewMode = this.#store.$isPreviewMode;
+@@ -150,15 +133,6 @@ export class DotUveToolbarComponent {
+     readonly $isPaletteOpen = this.#store.editorPaletteOpen;
+     readonly $canEditPage = this.#store.editorCanEditContent;
+ 
+-    /**
+-     * Popover passthrough styles for the "Copy URLs" popover.
+-     * Keeps the popover compact and prevents long URLs from stretching the overlay.
+-     */
+-    readonly copyUrlPopoverPt = {
+-        root: { class: 'w-full max-w-[25rem]' },
+-        content: { class: '!p-3' }
+-    };
+-
+     readonly $devices: Signal<DotDeviceListItem[]> = toSignal(
+         this.#deviceService.get().pipe(map((devices = []) => [...DEFAULT_DEVICES, ...devices])),
+         {
+@@ -336,19 +310,6 @@ export class DotUveToolbarComponent {
+         this.#store.pageLoad({ language_id });
+     }
+ 
+-    /**
+-     * Trigger the copy toasts
+-     *
+-     * @memberof DotUveToolbarComponent
+-     */
+-    triggerCopyToast(): void {
+-        this.#messageService.add({
+-            severity: 'success',
+-            summary: this.#dotMessageService.get('Copied!'),
+-            life: 3000
+-        });
+-    }
+-
+     /**
+      * Handle the persona selection
+      *

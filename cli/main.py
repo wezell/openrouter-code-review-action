@@ -255,14 +255,76 @@ def _prepare_comment_command(
 
 def _is_commenter_allowed(config: ReviewConfig, comment: dict[str, Any]) -> bool:
     author_association = str(comment.get("author_association") or "")
+    author_login = str((comment.get("user") or {}).get("login") or "")
+    comment_id = comment.get("id")
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+    pr_number = config.pr_number
+
     if config.is_commenter_allowed(author_association):
+        _emit_audit_log(
+            outcome="allowed",
+            event_name=event_name,
+            comment_id=comment_id,
+            author=author_login,
+            author_association=author_association,
+            pr_number=pr_number,
+            allowed=config.allowed_commenter_associations,
+        )
         return True
+
+    _emit_audit_log(
+        outcome="rejected",
+        event_name=event_name,
+        comment_id=comment_id,
+        author=author_login,
+        author_association=author_association,
+        pr_number=pr_number,
+        allowed=config.allowed_commenter_associations,
+    )
+    # Keep human-readable line on stdout for backwards-compatible Action logs.
     print(
         "Ignoring /codex command from unauthorized commenter association "
         f"{author_association or '<missing>'}. Allowed: "
         f"{', '.join(config.allowed_commenter_associations) or '<none>'}."
     )
     return False
+
+
+def _emit_audit_log(
+    *,
+    outcome: str,
+    event_name: str,
+    comment_id: Any,
+    author: str,
+    author_association: str,
+    pr_number: int | None,
+    allowed: tuple[str, ...],
+) -> None:
+    """Emit a structured audit-log entry for an act-mode trigger gate decision.
+
+    Audit entries are written as a single line to stderr with a stable
+    ``[audit:act-mode-gate]`` prefix and JSON payload so downstream log
+    aggregators can parse them deterministically without color/format drift.
+    """
+
+    payload = {
+        "event": "act_mode_trigger_gate",
+        "outcome": outcome,
+        "event_name": event_name,
+        "comment_id": comment_id,
+        "author": author or None,
+        "author_association": author_association or None,
+        "pr_number": pr_number,
+        "allowed_associations": list(allowed),
+    }
+    line = "[audit:act-mode-gate] " + json.dumps(payload, sort_keys=True, default=str)
+    if outcome == "rejected":
+        LOGGER.warning(line)
+    else:
+        LOGGER.info(line)
+    # Always echo to stderr regardless of whether logging has been configured by
+    # the GitHub Action runner; this is a security-relevant audit trail.
+    print(line, file=sys.stderr)
 
 
 def _build_comment_context(comment: dict[str, Any], body: str) -> CommentContext:

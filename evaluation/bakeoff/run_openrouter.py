@@ -95,6 +95,7 @@ if str(_REPO_ROOT) not in sys.path:
 from cli.core.exceptions import ReviewContractError  # noqa: E402
 from cli.core.model_config import (  # noqa: E402
     DEFAULT_CONFIG_PATH,
+    apply_web_search_mode,
     load_model_config,
 )
 from cli.core.models import (  # noqa: E402
@@ -239,10 +240,13 @@ def _user_message(pr: SamplePR, diff: str) -> str:
 
 
 def _ensure_online_suffix(model: str, web_search_mode: str) -> str:
-    """Apply OpenRouter's ``:online`` web-search variant when requested."""
-    if web_search_mode != "live":
-        return model
-    return model if model.endswith(":online") else f"{model}:online"
+    """Apply OpenRouter's ``:online`` web-search variant when requested.
+
+    Thin wrapper that delegates to :func:`cli.core.model_config.apply_web_search_mode`
+    so the bake-off runner and the production review path share one slug-mapping
+    rule (AC 5: disabled/cached/live → OpenRouter ``:online`` analog).
+    """
+    return apply_web_search_mode(model, web_search_mode)
 
 
 def _build_payload(

@@ -1,0 +1,248 @@
+diff --git a/dotCMS/src/main/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImpl.java b/dotCMS/src/main/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImpl.java
+index 62a30fea9926..14f321d47e39 100644
+--- a/dotCMS/src/main/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImpl.java
++++ b/dotCMS/src/main/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImpl.java
+@@ -8629,14 +8629,14 @@ private void validateRelationships(final Contentlet contentlet,
+                 if (!foundInRelationships && UtilMethods.isSet(contentlet.getIdentifier())) {
+                     // Check if there are existing related content records for this relationship
+                     try {
+-                        final List<Contentlet> existingRelatedContent = getRelatedContent(contentlet, rel,
+-                                checkParent, APILocator.systemUser(), false);
+-                        hasExistingRelatedContent = existingRelatedContent != null && !existingRelatedContent.isEmpty();
++                        hasExistingRelatedContent = !FactoryLocator.getRelationshipFactory()
++                                .dbRelatedContent(rel, contentlet, checkParent, false, null, 1, 0)
++                                .isEmpty();
+                         if (hasExistingRelatedContent) {
+                             Logger.debug(this, String.format("Required %s relationship [%s] not present in contentRelationships but found existing related content for contentlet [%s]",
+                                     (checkParent ? "child" : "parent"), rel.getRelationTypeValue(), contentletId));
+                         }
+-                    } catch (final DotDataException | DotSecurityException e) {
++                    } catch (final DotDataException e) {
+                         Logger.error(this, String.format("Could not check existing related content for relationship [%s] and contentlet [%s]",
+                                 rel.getRelationTypeValue(), contentletId), e);
+                     }
+@@ -8662,7 +8662,7 @@ private void validateRelationships(final Contentlet contentlet,
+                 }
+ 
+                 if (relationship.getCardinality() == RELATIONSHIP_CARDINALITY.ONE_TO_ONE
+-                        .ordinal() && contentsInRelationship.size() > 0) {
++                        .ordinal() && !contentsInRelationship.isEmpty()) {
+                     hasError |= !isValidOneToOneRelationship(contentlet, builder, relationship,
+                             contentsInRelationship);
+ 
+@@ -8696,27 +8696,24 @@ private void validateRelationships(final Contentlet contentlet,
+                     }
+                     for (final Contentlet contentInRelationship : contentsInRelationship) {
+                         try {
+-                            // In order to get the related content we should use method getRelatedContent
+-                            // that has -boolean pullByParent- as parameter so we can pass -false-
+-                            // to get related content where we are parents.
+-                            final List<Contentlet> relatedContents = getRelatedContent(
+-                                    contentInRelationship, relationship, false,
+-                                    APILocator.getUserAPI()
+-                                            .getSystemUser(), true, 1, 0, null);
+-                            // If there's a 1-N relationship and the parent
+-                            // content is relating to a child that already has
+-                            // a parent...
++                            // For ONE_TO_MANY, check if the child already has a different parent.
++                            // Skip for other cardinalities — avoids N×M query explosion via the relationship cache.
+                             if (relationship.getCardinality()
+-                                    == RELATIONSHIP_CARDINALITY.ONE_TO_MANY.ordinal()
+-                                    && !relatedContents.isEmpty()
+-                                    && !relatedContents.get(0).getIdentifier()
+-                                    .equals(contentlet.getIdentifier())) {
+-                                final String errorMessage = String.format("ERROR! Parent content [%s] cannot be related to child content [%s] because it is already related to parent content [%s]",
+-                                        contentletId, contentInRelationship.getIdentifier(), relatedContents.get(0).getIdentifier());
+-                                Logger.error(this, errorMessage);
+-                                hasError = true;
+-                                builder.addBadCardinalityRelationship(relationship,
+-                                        contentsInRelationship);
++                                    == RELATIONSHIP_CARDINALITY.ONE_TO_MANY.ordinal()) {
++                                final List<Contentlet> relatedContents = FactoryLocator
++                                        .getRelationshipFactory()
++                                        .dbRelatedContent(relationship, contentInRelationship,
++                                                false, false, null, 1, 0);
++                                if (!relatedContents.isEmpty()
++                                        && !relatedContents.get(0).getIdentifier()
++                                        .equals(contentlet.getIdentifier())) {
++                                    final String errorMessage = String.format("ERROR! Parent content [%s] cannot be related to child content [%s] because it is already related to parent content [%s]",
++                                            contentletId, contentInRelationship.getIdentifier(), relatedContents.get(0).getIdentifier());
++                                    Logger.error(this, errorMessage);
++                                    hasError = true;
++                                    builder.addBadCardinalityRelationship(relationship,
++                                            contentsInRelationship);
++                                }
+                             }
+ 
+                             if (!contentInRelationship.getContentTypeId()
+diff --git a/dotcms-integration/src/test/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImplTest.java b/dotcms-integration/src/test/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImplTest.java
+index 20cf34fdecf1..ac9790582c95 100644
+--- a/dotcms-integration/src/test/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImplTest.java
++++ b/dotcms-integration/src/test/java/com/dotcms/content/elasticsearch/business/ESContentletAPIImplTest.java
+@@ -5001,4 +5001,166 @@ public void test_HTMLPage_URL_ShouldExtractLastPartAfterSlash() throws DotDataEx
+         }
+     }
+ 
++    /**
++     * Method to test: {@link ESContentletAPIImpl#validateRelationships(Contentlet, ContentletRelationships)}
++     * Given Scenario: A parent contentlet with a required relationship field was already checked-in
++     *   with a child. When the parent is checked-out and re-checked-in without passing
++     *   contentRelationships, the LIMIT-1 DB query introduced by the fix detects the existing child
++     *   relation in the tree table and prevents a false validation failure.
++     * ExpectedResult: No DotContentletValidationException is thrown on the re-checkin.
++     */
++    @Test
++    public void validateRelationships_requiredField_existingDbRelation_doesNotThrow()
++            throws DotDataException, DotSecurityException {
++
++        ContentType parentCT = null;
++        ContentType childCT = null;
++        try {
++            childCT = new ContentTypeDataGen().nextPersisted();
++            parentCT = new ContentTypeDataGen().nextPersisted();
++
++            final Field relField = FieldBuilder.builder(RelationshipField.class)
++                    .name("children")
++                    .contentTypeId(parentCT.id())
++                    .values(String.valueOf(
++                            WebKeys.Relationship.RELATIONSHIP_CARDINALITY.MANY_TO_MANY.ordinal()))
++                    .relationType(childCT.variable())
++                    .required(true)
++                    .build();
++            final Field savedField = APILocator.getContentTypeFieldAPI().save(relField, user);
++            final Relationship relationship = relationshipAPI.getRelationshipFromField(savedField, user);
++
++            final Contentlet child = new ContentletDataGen(childCT)
++                    .setPolicy(IndexPolicy.FORCE).nextPersisted();
++            Contentlet parent = new ContentletDataGen(parentCT).setPolicy(IndexPolicy.FORCE).next();
++
++            // First checkin: supply required child relationship explicitly
++            parent = contentletAPI.checkin(parent, Map.of(relationship, list(child)), user, false);
++
++            // Re-checkin without relationships — fix queries DB (LIMIT 1) and finds existing child
++            final Contentlet checkout = contentletAPI.checkout(parent.getInode(), user, false);
++            checkout.setIndexPolicy(IndexPolicy.FORCE);
++            contentletAPI.checkin(checkout, user, false);
++
++        } finally {
++            if (parentCT != null) {
++                contentTypeAPI.delete(parentCT);
++            }
++            if (childCT != null) {
++                contentTypeAPI.delete(childCT);
++            }
++        }
++    }
++
++    /**
++     * Method to test: {@link ESContentletAPIImpl#validateRelationships(Contentlet, ContentletRelationships)}
++     * Given Scenario: A ONE_TO_MANY relationship where a child is already owned by parent1.
++     *   When parent2 attempts to check-in claiming the same child, the LIMIT-1 DB cardinality
++     *   check detects that the child is already bound to a different parent.
++     * ExpectedResult: DotContentletValidationException is thrown with a bad-cardinality entry.
++     */
++    @Test
++    public void validateRelationships_oneToMany_childWithDifferentParent_throwsBadCardinality()
++            throws DotDataException, DotSecurityException {
++
++        ContentType parentCT = null;
++        ContentType childCT = null;
++        try {
++            childCT = new ContentTypeDataGen().nextPersisted();
++            parentCT = new ContentTypeDataGen().nextPersisted();
++
++            final Field relField = FieldBuilder.builder(RelationshipField.class)
++                    .name("children")
++                    .contentTypeId(parentCT.id())
++                    .values(String.valueOf(
++                            WebKeys.Relationship.RELATIONSHIP_CARDINALITY.ONE_TO_MANY.ordinal()))
++                    .relationType(childCT.variable())
++                    .required(false)
++                    .build();
++            final Field savedField = APILocator.getContentTypeFieldAPI().save(relField, user);
++            final Relationship relationship = relationshipAPI.getRelationshipFromField(savedField, user);
++
++            final Contentlet child = new ContentletDataGen(childCT)
++                    .setPolicy(IndexPolicy.FORCE).nextPersisted();
++            Contentlet parent1 = new ContentletDataGen(parentCT).setPolicy(IndexPolicy.FORCE).next();
++            final Contentlet parent2 = new ContentletDataGen(parentCT).setPolicy(IndexPolicy.FORCE).next();
++
++            // parent1 claims child — should succeed
++            contentletAPI.checkin(parent1, Map.of(relationship, list(child)), user, false);
++
++            // parent2 claims same child — must fail with bad cardinality
++            try {
++                contentletAPI.checkin(parent2, Map.of(relationship, list(child)), user, false);
++                fail("Expected DotContentletValidationException for ONE_TO_MANY cardinality violation");
++            } catch (final Exception e) {
++                assertTrue("Exception should be caused by DotContentletValidationException",
++                        ExceptionUtil.causedBy(e, DotContentletValidationException.class));
++                final Optional<Throwable> cause = ExceptionUtil.getCause(e,
++                        Set.of(DotContentletValidationException.class));
++                assertTrue(cause.isPresent());
++                final DotContentletValidationException dcve =
++                        (DotContentletValidationException) cause.get();
++                assertNotNull("Bad-cardinality map should be populated",
++                        dcve.getNotValidRelationship()
++                                .get(DotContentletValidationException.VALIDATION_FAILED_BAD_CARDINALITY));
++            }
++        } finally {
++            if (parentCT != null) {
++                contentTypeAPI.delete(parentCT);
++            }
++            if (childCT != null) {
++                contentTypeAPI.delete(childCT);
++            }
++        }
++    }
++
++    /**
++     * Method to test: {@link ESContentletAPIImpl#validateRelationships(Contentlet, ContentletRelationships)}
++     * Given Scenario: A MANY_TO_MANY relationship where a child is already related to parent1.
++     *   When parent2 claims the same child, the ONE_TO_MANY cardinality guard is skipped because
++     *   the relationship is MANY_TO_MANY — no DB query is issued for this check.
++     * ExpectedResult: No exception is thrown; multiple parents can share the same child.
++     */
++    @Test
++    public void validateRelationships_manyToMany_childSharedAcrossParents_doesNotThrow()
++            throws DotDataException, DotSecurityException {
++
++        ContentType parentCT = null;
++        ContentType childCT = null;
++        try {
++            childCT = new ContentTypeDataGen().nextPersisted();
++            parentCT = new ContentTypeDataGen().nextPersisted();
++
++            final Field relField = FieldBuilder.builder(RelationshipField.class)
++                    .name("children")
++                    .contentTypeId(parentCT.id())
++                    .values(String.valueOf(
++                            WebKeys.Relationship.RELATIONSHIP_CARDINALITY.MANY_TO_MANY.ordinal()))
++                    .relationType(childCT.variable())
++                    .required(false)
++                    .build();
++            final Field savedField = APILocator.getContentTypeFieldAPI().save(relField, user);
++            final Relationship relationship = relationshipAPI.getRelationshipFromField(savedField, user);
++
++            final Contentlet child = new ContentletDataGen(childCT)
++                    .setPolicy(IndexPolicy.FORCE).nextPersisted();
++            Contentlet parent1 = new ContentletDataGen(parentCT).setPolicy(IndexPolicy.FORCE).next();
++            final Contentlet parent2 = new ContentletDataGen(parentCT).setPolicy(IndexPolicy.FORCE).next();
++
++            // parent1 claims child
++            contentletAPI.checkin(parent1, Map.of(relationship, list(child)), user, false);
++
++            // parent2 claims same child — MANY_TO_MANY allows this, no cardinality error
++            contentletAPI.checkin(parent2, Map.of(relationship, list(child)), user, false);
++
++        } finally {
++            if (parentCT != null) {
++                contentTypeAPI.delete(parentCT);
++            }
++            if (childCT != null) {
++                contentTypeAPI.delete(childCT);
++            }
++        }
++    }
++
+ }

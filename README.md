@@ -11,12 +11,22 @@ quickly when pricing or quality changes.
 - **Act**: applies focused edits when trusted users comment `/codex`; commits
   and pushes to the PR branch via aider.
 
-> **Status — work in progress.** This action is mid-migration from the legacy
-> Codex SDK to OpenRouter + aider. The model-config file, OpenRouter wiring,
-> and review continuation are in place; the bake-off, full Codex-baseline
-> parity verification, and a few SHA-delta polish items are still being driven
-> by an Ouroboros session against `seed.yaml`. See [Resume / Project state](#resume--project-state)
-> at the bottom for how to pick the run back up.
+Ship as `dotcms/openrouter-code-review-action@v1`. Models are declared in an
+in-repo config file (`.openrouter-review.yml`) so swapping providers when
+pricing or quality changes is a one-line edit — no code or workflow change.
+
+**Contents**
+
+- [Quick Start (Review)](#quick-start-review)
+- [Act on `/codex` Comments](#act-on-codex-comments)
+- [Swapping the Model](#swapping-the-model-single-edit-config-file)
+- [Inputs](#inputs) · [Outputs](#outputs) · [Required Permissions](#required-permissions)
+- [Review Continuation](#review-continuation) · [Deduplication](#deduplication-on-repeated-runs)
+- [Security & Permissions](#security--permissions) · [Troubleshooting](#troubleshooting)
+- Migrating from `dotcms/codex-code-review-action`? See [MIGRATION.md](./MIGRATION.md).
+- Contributing or swapping the review/act model? See
+  [CONTRIBUTING.md](./CONTRIBUTING.md) and the parity gate documented in
+  [eval/README.md](./eval/README.md#parity-gate-sub-ac-41--42--43).
 
 ## Quick Start (Review)
 
@@ -37,7 +47,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: OpenRouter autonomous review
-        uses: wezell/openrouter-code-review-action@v1
+        uses: dotcms/openrouter-code-review-action@v1
         with:
           mode: review
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
@@ -92,7 +102,7 @@ jobs:
       - run: npm ci
 
       - name: OpenRouter autonomous edits
-        uses: wezell/openrouter-code-review-action@v1
+        uses: dotcms/openrouter-code-review-action@v1
         with:
           mode: act
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
@@ -165,6 +175,42 @@ call time; `cached` and `disabled` skip the live web fetch.
 > `openai_api_key` is still accepted for legacy parity but the OpenRouter path
 > is the supported route for all model calls. Migration drops direct vendor
 > SDKs entirely — see `seed.yaml` for the constraint set.
+
+## Outputs
+
+This action exposes no formal `outputs:` block. Side effects are the unit of
+work:
+
+| Side effect | Where | Mode |
+|-------------|-------|------|
+| Inline review comments | PR diff | `review` |
+| PR-level summary | PR issue comments (refreshed each run) | `review` |
+| Review continuation cache | `actions/cache` keyed by repo, PR, model, SHA | `review` |
+| Streamed model tokens | GitHub Actions step log (`stream_agent_messages: 1`) | `review`, `act` |
+| Commits + push to PR branch | PR head branch | `act` |
+| Reply comment on the triggering `/codex` thread | PR issue comments | `act` |
+| Non-zero exit on hard failure | Job status | `review`, `act` |
+
+If a downstream job needs the review status, gate on the job's `result`
+(`needs.review.result == 'success'`).
+
+## Required Permissions
+
+The minimum permissions needed depend on mode:
+
+| Mode | `contents` | `pull-requests` | `issues` |
+|------|------------|-----------------|----------|
+| `review` | `read` | `write` | `write` |
+| `act` | `write` | `write` | `write` |
+
+`contents: write` is required only by Act mode — aider needs to push commits
+back to the PR branch. Review mode never modifies the repo. `issues: write`
+covers both the PR-level summary (review) and the `/codex` reply (act);
+GitHub treats PR comments as issue comments.
+
+For PRs from forks, the default `GITHUB_TOKEN` cannot push to the fork's
+branch. Run Act only on branches in the main repo, or supply a PAT
+(`secrets.REPO_ACCESS_TOKEN` in the example above) with fork write access.
 
 ## What It Posts
 
@@ -245,40 +291,5 @@ in no-PR mode. Tags and GitHub Releases are created automatically on push to
 To force a specific version: Actions > "Release Please" > Run workflow >
 provide `release_as` (e.g., `1.3.0`).
 
-## Resume / Project state
-
-This repo is being driven by an Ouroboros seed (`seed.yaml`) that defines the
-goal, constraints, acceptance criteria, and the migration ontology. The most
-recent Ouroboros run was paused mid-execution to move work to another machine.
-
-**Last paused state**
-
-- Phase: `Deliver`, Level 2/3 (Tasks 1, 2, 4, 5, 7)
-- Tasks: 3/9 complete
-- Subtasks: 13/29 complete · 10 working · 6 pending
-- In-flight subtasks at pause:
-  - Wire the review pipeline to scope model input to only the SHA-delta
-    files/hunks when prior state exists, falling back to full review on first
-    run or missing state.
-  - Run the Codex baseline reviewer over the labeled dataset and capture
-    per-finding outputs for scoring.
-  - Run the OpenRouter-based review action against the curated PR sample and
-    collect findings output in a comparable format.
-
-**Resume IDs (Ouroboros, machine-local)**
-
-- Session ID: `orch_f0eb099e72e4`
-- Last execution ID: `exec_c8b71e370561` (terminal: cancelled)
-
-These IDs are local to the Ouroboros plugin store on the machine that started
-the run. On a different machine, kick off a fresh session against `seed.yaml`
-— the project files capture the partial progress:
-
-```bash
-ooo run seed.yaml
-```
-
-**Note on `seed.yaml`**: constraint #7 (`Initial review and act model: ...`)
-must be quoted as a string — an unquoted colon makes YAML parse it as a
-mapping and Pydantic validation fails. The committed file already has the
-correct quoting.
+Pin major (`@v1`) for floating updates inside the major, or pin a tag
+(`@v1.3.0`) for reproducible builds.

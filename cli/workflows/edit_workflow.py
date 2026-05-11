@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..clients.codex_client import CodexClient
+from .act_runner import ActAgentResult, ActModeRunner
 from ..clients.git_ops import (
     GitWorktreeSnapshot,
     git_changed_paths_since_snapshot,
@@ -66,6 +67,21 @@ class _EditPostAgentState:
 
 
 @dataclass(frozen=True)
+class _ActCommitMetadata:
+    """Subset of act-mode information used to author the commit message.
+
+    The runner-produced :class:`ActAgentResult` carries the model slug and
+    applied-file list we want to record in the trailer of the commit
+    message so reviewers can see (a) which OpenRouter model authored the
+    edit and (b) which files aider claimed to touch — independent of the
+    git diff itself, which only reflects what actually changed on disk.
+    """
+
+    model: str
+    applied_files: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class _EditEarlyExit:
     message: str
     exit_code: int
@@ -87,11 +103,35 @@ class EditWorkflow:
         *,
         codex_client: CodexClient | None = None,
         github_client: GitHubClientProtocol | None = None,
+        act_runner: ActModeRunner | None = None,
     ) -> None:
         self.config = config
-        self.codex_client = codex_client or CodexClient(config)
+        # Codex-backed agent path is preserved for non-act callers (e.g.
+        # legacy review-comment workflows). Act mode now routes through
+        # the aider wrapper via ``ActModeRunner`` so the OpenRouter model
+        # config from action inputs flows directly into ``aider``.
+        self._codex_client = codex_client
         self.github_client: GitHubClientProtocol = github_client or GitHubClient(config)
+        self._act_runner = act_runner
         self._debug = make_debug(config)
+
+    @property
+    def codex_client(self) -> CodexClient:
+        """Lazy CodexClient — only constructed if a non-act path needs it."""
+        if self._codex_client is None:
+            self._codex_client = CodexClient(self.config)
+        return self._codex_client
+
+    @property
+    def act_runner(self) -> ActModeRunner:
+        """Lazy ActModeRunner bound to ``self.config``.
+
+        Constructed on first use so non-act callers (review mode + tests
+        that monkeypatch the runner) do not pay the import cost.
+        """
+        if self._act_runner is None:
+            self._act_runner = ActModeRunner(self.config)
+        return self._act_runner
 
     def process_edit_command(
         self,
@@ -127,11 +167,19 @@ class EditWorkflow:
             print(prompt_state.comment_context_warning, file=sys.stderr)
             self._debug(1, prompt_state.comment_context_warning)
 
-        agent_output = self._execute_agent_turn_or_reply(
-            pr,
-            comment_ctx,
-            prompt_state.prompt,
-        )
+        act_metadata: _ActCommitMetadata | None = None
+        if self.config.mode == "act":
+            agent_output, act_metadata = self._execute_aider_turn_or_reply_with_metadata(
+                pr,
+                comment_ctx,
+                prompt_state.prompt,
+            )
+        else:
+            agent_output = self._execute_agent_turn_or_reply(
+                pr,
+                comment_ctx,
+                prompt_state.prompt,
+            )
         if agent_output is None:
             return 1
 
@@ -188,6 +236,7 @@ class EditWorkflow:
                 command_text=command_text,
                 preflight_state=preflight_state,
                 post_agent_state=post_agent_state,
+                act_metadata=act_metadata,
             )
         except subprocess.CalledProcessError as exc:
             details = git_format_called_process_error(exc)
@@ -271,6 +320,10 @@ class EditWorkflow:
         comment_ctx: CommentContext | None,
         prompt: str,
     ) -> str | None:
+        if self.config.mode == "act":
+            return self._execute_aider_turn_or_reply(pr, comment_ctx, prompt)
+        # Non-act callers (review-comment driven Codex flow) stay on the
+        # Codex path until that workflow is also migrated.
         try:
             return self.codex_client.execute_text(
                 prompt,
@@ -285,6 +338,69 @@ class EditWorkflow:
                 stderr=True,
             )
             return None
+
+    def _execute_aider_turn_or_reply(
+        self,
+        pr: PullRequestLikeProtocol,
+        comment_ctx: CommentContext | None,
+        prompt: str,
+    ) -> str | None:
+        """Backwards-compatible wrapper that drops the metadata."""
+        output, _ = self._execute_aider_turn_or_reply_with_metadata(pr, comment_ctx, prompt)
+        return output
+
+    def _execute_aider_turn_or_reply_with_metadata(
+        self,
+        pr: PullRequestLikeProtocol,
+        comment_ctx: CommentContext | None,
+        prompt: str,
+    ) -> tuple[str | None, _ActCommitMetadata | None]:
+        """Run the aider wrapper for act mode and surface its result.
+
+        The structured :class:`ActAgentResult` produced by
+        :class:`ActModeRunner` carries stdout, stderr, exit code, and a
+        deduplicated ``applied_files`` list parsed from aider's
+        ``Applied edit to <path>`` lines. We log the rendered summary
+        for the GitHub Actions log, capture the model + applied-files
+        for the eventual commit-message trailer, and return the same
+        summary string as ``agent_output`` for the PR reply.
+        """
+        try:
+            act_result: ActAgentResult = self.act_runner.execute(prompt)
+        except Exception as exc:
+            self._report_and_reply(
+                pr=pr,
+                comment_ctx=comment_ctx,
+                message=f"Edit failed: {exc}",
+                exit_code=1,
+                stderr=True,
+            )
+            return None, None
+
+        summary = act_result.render_summary()
+        # Echo the run summary to the runner log so operators scrolling
+        # the GitHub Actions output see exit code + applied edits even
+        # when the PR reply path fails downstream.
+        if act_result.succeeded:
+            print(summary)
+        else:
+            print(summary, file=sys.stderr)
+
+        if not act_result.succeeded:
+            self._report_and_reply(
+                pr=pr,
+                comment_ctx=comment_ctx,
+                message=summary,
+                exit_code=act_result.returncode if act_result.returncode != 0 else 1,
+                stderr=True,
+            )
+            return None, None
+
+        metadata = _ActCommitMetadata(
+            model=self.config.act_model,
+            applied_files=tuple(act_result.applied_files),
+        )
+        return summary, metadata
 
     def _collect_post_agent_state_or_reply(
         self,
@@ -470,11 +586,16 @@ def _finalize_git_edit(
     command_text: str,
     preflight_state: _EditPreflightState,
     post_agent_state: _EditPostAgentState,
+    act_metadata: _ActCommitMetadata | None = None,
 ) -> None:
     if post_agent_state.changed and post_agent_state.agent_touched_paths:
         git_setup_identity()
-        summary = command_text.splitlines()[0] if command_text.splitlines() else command_text
-        git_commit_paths(f"Codex edit: {summary[:72]}", post_agent_state.agent_touched_paths)
+        message = _build_commit_message(
+            command_text=command_text,
+            agent_touched_paths=post_agent_state.agent_touched_paths,
+            act_metadata=act_metadata,
+        )
+        git_commit_paths(message, post_agent_state.agent_touched_paths)
 
     after_head_sha = git_current_head_sha()
     history_rewritten = (
@@ -501,6 +622,51 @@ def _finalize_git_edit(
         git_push()
 
     print("Pushed edits successfully.")
+
+
+_COMMIT_SUBJECT_LIMIT = 72
+
+
+def _build_commit_message(
+    *,
+    command_text: str,
+    agent_touched_paths: tuple[str, ...],
+    act_metadata: _ActCommitMetadata | None,
+) -> str:
+    """Render a descriptive commit message for an aider-applied edit.
+
+    Subject line follows Conventional-Commit-ish form: ``act(aider): <summary>``
+    when act-mode metadata is present, otherwise falls back to the
+    legacy ``Codex edit:`` form for non-act callers. The body includes
+    the originating command, OpenRouter model slug, and the actual list
+    of touched paths so the commit is self-describing in ``git log``
+    without needing to dig into the PR.
+    """
+
+    raw_summary = command_text.splitlines()[0] if command_text.splitlines() else command_text
+    summary = (raw_summary.strip() or "apply edits")[:_COMMIT_SUBJECT_LIMIT]
+
+    if act_metadata is None:
+        # Non-act callers (legacy Codex flow) keep their existing subject
+        # so commit history reads consistently for that path.
+        return f"Codex edit: {summary}"
+
+    subject = f"act(aider): {summary}"
+    body_lines: list[str] = [
+        "",
+        f"Applied via aider + OpenRouter model {act_metadata.model or '(unset)'}.",
+    ]
+    body_lines.append("")
+    body_lines.append(f"Command: {command_text.strip() or '(empty)'}")
+
+    file_list = list(act_metadata.applied_files) or list(agent_touched_paths)
+    if file_list:
+        body_lines.append("")
+        body_lines.append("Files:")
+        for path in file_list:
+            body_lines.append(f"- {path}")
+    body = "\n".join(body_lines).rstrip()
+    return f"{subject}\n{body}" if body else subject
 
 
 def _wants_fix_unresolved(text: str) -> bool:

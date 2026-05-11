@@ -25,7 +25,10 @@ from cli.core.model_config import (
     DEFAULT_ACT_MODEL,
     DEFAULT_CONFIG_PATH,
     DEFAULT_REVIEW_MODEL,
+    ONLINE_SUFFIX,
+    WEB_SEARCH_MODES,
     ModelConfig,
+    apply_web_search_mode,
     load_model_config,
     resolve_config_path,
 )
@@ -244,3 +247,115 @@ def test_invalid_in_repo_file_raises_configuration_error(base_env: Path) -> None
 
     with pytest.raises(ConfigurationError, match="must be a non-empty string"):
         ReviewConfig.from_args(pr_number=1, mode="review")
+
+
+# --- AC 5: web_search_mode → OpenRouter :online slug mapping ---------------
+#
+# AC 5 requires that the disabled/cached/live web-search knob is honored by
+# routing live mode through OpenRouter's ``:online`` slug variant, while
+# disabled and cached leave the slug untouched. The helper is the single
+# choke point that both the bake-off runner and the production review path
+# call into, so swapping models or modes never silently flips web search.
+
+
+def test_web_search_modes_enum_is_three_values() -> None:
+    assert WEB_SEARCH_MODES == frozenset({"disabled", "cached", "live"})
+
+
+def test_apply_web_search_mode_live_appends_online_suffix() -> None:
+    assert (
+        apply_web_search_mode("anthropic/claude-opus-4.7", "live")
+        == f"anthropic/claude-opus-4.7{ONLINE_SUFFIX}"
+    )
+    assert (
+        apply_web_search_mode("openai/gpt-5.4", "live") == f"openai/gpt-5.4{ONLINE_SUFFIX}"
+    )
+
+
+def test_apply_web_search_mode_live_is_idempotent() -> None:
+    already = f"anthropic/claude-opus-4.7{ONLINE_SUFFIX}"
+    # Repeated application must not produce ":online:online".
+    assert apply_web_search_mode(already, "live") == already
+
+
+@pytest.mark.parametrize("mode", ["disabled", "cached"])
+def test_apply_web_search_mode_disabled_and_cached_leave_slug_untouched(mode: str) -> None:
+    slug = "anthropic/claude-opus-4.7"
+    assert apply_web_search_mode(slug, mode) == slug
+    # And do not strip an existing :online if the operator pinned it
+    # explicitly in the slug — the helper is non-destructive.
+    pinned = f"{slug}{ONLINE_SUFFIX}"
+    assert apply_web_search_mode(pinned, mode) == pinned
+
+
+def test_apply_web_search_mode_handles_whitespace_and_unknown_modes() -> None:
+    # Whitespace in the slug is trimmed.
+    assert (
+        apply_web_search_mode("  anthropic/claude-opus-4.7  ", "live")
+        == f"anthropic/claude-opus-4.7{ONLINE_SUFFIX}"
+    )
+    # None / empty / unknown modes default to no-op (do not silently turn on
+    # web search). Validation of the *config value* happens at file-load time.
+    slug = "anthropic/claude-opus-4.7"
+    assert apply_web_search_mode(slug, None) == slug
+    assert apply_web_search_mode(slug, "") == slug
+    assert apply_web_search_mode(slug, "bogus") == slug
+
+
+def test_apply_web_search_mode_returns_input_when_not_a_string() -> None:
+    # Defensive: any non-string slug (e.g. ``None`` from a misconfigured
+    # caller) is returned unchanged so we never produce ``None:online``.
+    assert apply_web_search_mode("", "live") == ""
+    assert apply_web_search_mode(None, "live") is None  # type: ignore[arg-type]
+
+
+def test_apply_web_search_mode_works_for_any_provider_slug() -> None:
+    # AC 5 is provider-agnostic — swap-speed means flipping the slug to a
+    # different vendor must keep the :online mapping intact.
+    for slug in (
+        "google/gemini-2.5-pro",
+        "openai/gpt-5.4",
+        "deepseek/deepseek-chat",
+        "anthropic/claude-sonnet-4.5",
+    ):
+        assert apply_web_search_mode(slug, "live") == f"{slug}{ONLINE_SUFFIX}"
+        assert apply_web_search_mode(slug, "disabled") == slug
+        assert apply_web_search_mode(slug, "cached") == slug
+
+
+def test_review_config_routes_live_through_apply_web_search_mode(base_env: Path) -> None:
+    """End-to-end: a YAML edit setting web_search_mode: live makes the
+    helper produce the :online slug for the resolved review model."""
+
+    _write_config(
+        base_env,
+        "review:\n"
+        "  model: anthropic/claude-opus-4.7\n"
+        "  web_search_mode: live\n",
+    )
+    config = ReviewConfig.from_args(pr_number=1, mode="review")
+
+    assert config.web_search_mode == "live"
+    assert (
+        apply_web_search_mode(config.selected_model, config.web_search_mode)
+        == f"anthropic/claude-opus-4.7{ONLINE_SUFFIX}"
+    )
+
+
+@pytest.mark.parametrize("mode", ["disabled", "cached"])
+def test_review_config_disabled_and_cached_skip_online_suffix(
+    base_env: Path, mode: str
+) -> None:
+    _write_config(
+        base_env,
+        f"review:\n"
+        f"  model: anthropic/claude-opus-4.7\n"
+        f"  web_search_mode: {mode}\n",
+    )
+    config = ReviewConfig.from_args(pr_number=1, mode="review")
+
+    assert config.web_search_mode == mode
+    assert (
+        apply_web_search_mode(config.selected_model, config.web_search_mode)
+        == "anthropic/claude-opus-4.7"
+    )

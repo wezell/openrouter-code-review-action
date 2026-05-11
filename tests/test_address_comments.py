@@ -10,8 +10,22 @@ from cli.core.config import ReviewConfig
 from cli.core.exceptions import GitHubAPIError
 from cli.core.models import CommentContext, ReviewRunResult, UnresolvedReviewComment
 from cli.review.posting import ReviewPostingOutcome
+from cli.workflows.act_runner import ActAgentResult
 from cli.workflows.edit_prompt import CommentContextRenderResult
 from cli.workflows.edit_workflow import EditWorkflow, _wants_fix_unresolved
+
+
+def _act_result(stdout: str = "ok", *, returncode: int = 0) -> ActAgentResult:
+    """Build an ``ActAgentResult`` for tests that previously returned a string from CodexClient."""
+    return ActAgentResult(
+        returncode=returncode,
+        stdout=stdout,
+        stderr="",
+        command=("aider",),
+        cwd=Path("."),
+        applied_files=(),
+        error_message=None if returncode == 0 else "fake aider error",
+    )
 from cli.workflows.review_workflow import (
     SUMMARY_TIP,
     ReviewSummary,
@@ -305,13 +319,13 @@ def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
         def post_issue_comment(self, current_pr: _PR, text: str):  # noqa: ARG002
             current_pr.as_issue().create_comment(text)
 
-    class _FakeCodexClient:
+    class _FakeActRunner:
         def __init__(self) -> None:
             self.prompts: list[str] = []
 
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
             self.prompts.append(prompt)
-            return "ok"
+            return _act_result("ok")
 
     monkeypatch.setattr(workflow_mod, "git_current_head_sha", lambda: "head")
     monkeypatch.setattr(workflow_mod, "git_remote_head_sha", lambda branch: "remote")  # noqa: ARG005
@@ -324,7 +338,7 @@ def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
     monkeypatch.setattr(workflow_mod, "git_has_changes", lambda: False)
     monkeypatch.setattr(workflow_mod, "git_head_is_ahead", lambda branch: False)  # noqa: ARG005
 
-    fake_codex = _FakeCodexClient()
+    fake_runner = _FakeActRunner()
 
     ep = EditWorkflow(
         ReviewConfig(
@@ -333,7 +347,7 @@ def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, fake_codex),
+        act_runner=cast(Any, fake_runner),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -346,7 +360,7 @@ def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
     rc = ep.process_edit_command("/codex address comments", 1, comment_ctx)
     assert rc == 2
     assert pr._iss.comments and "Failed to retrieve review threads;" in pr._iss.comments[0]  # type: ignore[attr-defined]
-    assert fake_codex.prompts == []
+    assert fake_runner.prompts == []
 
 
 def test_process_edit_command_surfaces_comment_context_warnings(monkeypatch, capsys) -> None:
@@ -378,9 +392,9 @@ def test_process_edit_command_surfaces_comment_context_warnings(monkeypatch, cap
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             self.replies.append(text)
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     monkeypatch.setattr(
         workflow_mod,
@@ -409,7 +423,7 @@ def test_process_edit_command_surfaces_comment_context_warnings(monkeypatch, cap
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, fake_gh),
     )
 
@@ -457,9 +471,9 @@ def test_process_edit_command_prints_reply_failures(monkeypatch, capsys) -> None
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             raise GitHubAPIError("reply boom")
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     monkeypatch.setattr(
         workflow_mod,
@@ -479,7 +493,7 @@ def test_process_edit_command_prints_reply_failures(monkeypatch, capsys) -> None
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -523,9 +537,9 @@ def test_process_edit_command_skips_commit_when_no_agent_scoped_changes(monkeypa
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             return None
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     before = GitWorktreeSnapshot(
         changed_paths=frozenset({"preexisting.py"}),
@@ -557,7 +571,7 @@ def test_process_edit_command_skips_commit_when_no_agent_scoped_changes(monkeypa
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -591,9 +605,9 @@ def test_process_edit_command_commits_only_agent_scoped_paths(monkeypatch) -> No
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             return None
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     before = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
     after = GitWorktreeSnapshot(
@@ -634,7 +648,7 @@ def test_process_edit_command_commits_only_agent_scoped_paths(monkeypatch) -> No
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -643,6 +657,188 @@ def test_process_edit_command_commits_only_agent_scoped_paths(monkeypatch) -> No
     assert rc == 0
     assert committed == [["a.py", "b.py"]]
     assert pushed == ["feature"]
+
+
+def test_process_edit_command_act_mode_writes_descriptive_commit_message(monkeypatch) -> None:
+    """Sub-AC 7.3: act-mode commit message names aider, model, files, and command."""
+    import cli.workflows.edit_workflow as workflow_mod
+
+    class _PR:
+        class _H:
+            ref = "feature"
+
+        class _B:
+            ref = "main"
+
+        head = _H()
+        base = _B()
+
+    class _FakeGitHubClient:
+        def get_pr(self, pr_number: int):  # noqa: ARG002
+            return _PR()
+
+        def get_unresolved_threads(self, current_pr):  # noqa: ARG002
+            return []
+
+        def reply_to_review_comment(self, current_pr, comment_id: int, text: str):  # noqa: ARG002
+            return None
+
+        def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
+            return None
+
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return ActAgentResult(
+                returncode=0,
+                stdout="Applied edit to a.py\nApplied edit to b.py\n",
+                stderr="",
+                command=("aider",),
+                cwd=Path("."),
+                applied_files=("a.py", "b.py"),
+                error_message=None,
+            )
+
+    before = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
+    after = GitWorktreeSnapshot(
+        changed_paths=frozenset({"a.py", "b.py"}),
+        path_states={"a.py": (True, "h1"), "b.py": (True, "h2")},
+    )
+    snapshots = iter([before, after])
+    head_shas = iter(["head-before", "head-after"])
+
+    monkeypatch.setattr(workflow_mod, "git_worktree_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(workflow_mod, "git_current_head_sha", lambda: next(head_shas))
+    monkeypatch.setattr(workflow_mod, "git_remote_head_sha", lambda branch: "remote-head")  # noqa: ARG005
+    monkeypatch.setattr(workflow_mod, "git_rebase_in_progress", lambda: False)
+    monkeypatch.setattr(workflow_mod, "git_has_changes", lambda: True)
+    monkeypatch.setattr(workflow_mod, "git_head_is_ahead", lambda branch: False)  # noqa: ARG005
+    monkeypatch.setattr(workflow_mod, "git_is_ancestor", lambda older, newer: True)  # noqa: ARG005
+    monkeypatch.setattr(workflow_mod, "git_setup_identity", lambda: None)
+
+    captured_messages: list[str] = []
+
+    def _capture_commit(message: str, paths):  # noqa: ARG001
+        captured_messages.append(message)
+        return True
+
+    monkeypatch.setattr(workflow_mod, "git_commit_paths", _capture_commit)
+    monkeypatch.setattr(
+        workflow_mod,
+        "git_push_head_to_branch",
+        lambda branch, debug: None,  # noqa: ARG005
+    )
+    monkeypatch.setattr(workflow_mod, "git_push", lambda: None)
+
+    workflow = EditWorkflow(
+        ReviewConfig(
+            github_token="test",
+            repository="o/r",
+            pr_number=1,
+            mode="act",
+            act_model="anthropic/claude-opus-4.7",
+        ),
+        act_runner=cast(Any, _FakeActRunner()),
+        github_client=cast(Any, _FakeGitHubClient()),
+    )
+
+    rc = workflow.process_edit_command("/codex fix docs and improve readme", 1, comment_ctx=None)
+
+    assert rc == 0
+    assert len(captured_messages) == 1
+    message = captured_messages[0]
+    # Subject identifies act-mode aider authorship.
+    subject_line = message.splitlines()[0]
+    assert subject_line.startswith("act(aider):")
+    assert "fix docs and improve readme" in subject_line
+    assert len(subject_line) <= len("act(aider): ") + 72
+    # Body identifies the OpenRouter model used for the edit.
+    assert "anthropic/claude-opus-4.7" in message
+    # Body lists the touched files surfaced from aider stdout.
+    assert "- a.py" in message
+    assert "- b.py" in message
+    # Body records the originating command for traceability.
+    assert "/codex fix docs and improve readme" in message
+
+
+def test_process_edit_command_non_act_mode_preserves_legacy_commit_subject(monkeypatch) -> None:
+    """Non-act callers (legacy Codex flow) keep the existing ``Codex edit:`` subject."""
+    import cli.workflows.edit_workflow as workflow_mod
+
+    class _PR:
+        class _H:
+            ref = "feature"
+
+        class _B:
+            ref = "main"
+
+        head = _H()
+        base = _B()
+
+    class _FakeGitHubClient:
+        def get_pr(self, pr_number: int):  # noqa: ARG002
+            return _PR()
+
+        def get_unresolved_threads(self, current_pr):  # noqa: ARG002
+            return []
+
+        def reply_to_review_comment(self, current_pr, comment_id: int, text: str):  # noqa: ARG002
+            return None
+
+        def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
+            return None
+
+    class _FakeCodexClient:
+        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
+            return "ok"
+
+    before = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
+    after = GitWorktreeSnapshot(
+        changed_paths=frozenset({"a.py"}),
+        path_states={"a.py": (True, "h1")},
+    )
+    snapshots = iter([before, after])
+    head_shas = iter(["head-before", "head-after"])
+
+    monkeypatch.setattr(workflow_mod, "git_worktree_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(workflow_mod, "git_current_head_sha", lambda: next(head_shas))
+    monkeypatch.setattr(workflow_mod, "git_remote_head_sha", lambda branch: "remote-head")  # noqa: ARG005
+    monkeypatch.setattr(workflow_mod, "git_rebase_in_progress", lambda: False)
+    monkeypatch.setattr(workflow_mod, "git_has_changes", lambda: True)
+    monkeypatch.setattr(workflow_mod, "git_head_is_ahead", lambda branch: False)  # noqa: ARG005
+    monkeypatch.setattr(workflow_mod, "git_is_ancestor", lambda older, newer: True)  # noqa: ARG005
+    monkeypatch.setattr(workflow_mod, "git_setup_identity", lambda: None)
+
+    captured_messages: list[str] = []
+
+    def _capture_commit(message: str, paths):  # noqa: ARG001
+        captured_messages.append(message)
+        return True
+
+    monkeypatch.setattr(workflow_mod, "git_commit_paths", _capture_commit)
+    monkeypatch.setattr(
+        workflow_mod,
+        "git_push_head_to_branch",
+        lambda branch, debug: None,  # noqa: ARG005
+    )
+    monkeypatch.setattr(workflow_mod, "git_push", lambda: None)
+
+    workflow = EditWorkflow(
+        ReviewConfig(
+            github_token="test",
+            repository="o/r",
+            pr_number=1,
+            mode="review",
+        ),
+        codex_client=cast(Any, _FakeCodexClient()),
+        github_client=cast(Any, _FakeGitHubClient()),
+    )
+
+    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx=None)
+
+    assert rc == 0
+    assert len(captured_messages) == 1
+    assert captured_messages[0].startswith("Codex edit: ")
+    assert "fix docs" in captured_messages[0]
 
 
 def test_process_edit_command_uses_force_with_lease_for_rewritten_history(monkeypatch) -> None:
@@ -674,9 +870,9 @@ def test_process_edit_command_uses_force_with_lease_for_rewritten_history(monkey
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             self.replies.append(text)
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     before = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
     after = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
@@ -711,7 +907,7 @@ def test_process_edit_command_uses_force_with_lease_for_rewritten_history(monkey
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=fake_gh,
     )
 
@@ -750,13 +946,13 @@ def test_process_edit_command_fails_fast_when_rebase_is_active(monkeypatch) -> N
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             self.replies.append(text)
 
-    class _FakeCodexClient:
+    class _FakeActRunner:
         def __init__(self) -> None:
             self.calls = 0
 
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
             self.calls += 1
-            return "ok"
+            return _act_result("ok")
 
     monkeypatch.setattr(
         workflow_mod,
@@ -768,7 +964,7 @@ def test_process_edit_command_fails_fast_when_rebase_is_active(monkeypatch) -> N
     monkeypatch.setattr(workflow_mod, "git_rebase_in_progress", lambda: True)
 
     fake_gh = cast(Any, _FakeGitHubClient())
-    fake_codex = _FakeCodexClient()
+    fake_runner = _FakeActRunner()
     workflow = EditWorkflow(
         ReviewConfig(
             github_token="test",
@@ -776,7 +972,7 @@ def test_process_edit_command_fails_fast_when_rebase_is_active(monkeypatch) -> N
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, fake_codex),
+        act_runner=cast(Any, fake_runner),
         github_client=fake_gh,
     )
 
@@ -784,7 +980,7 @@ def test_process_edit_command_fails_fast_when_rebase_is_active(monkeypatch) -> N
 
     assert rc == 2
     assert fake_gh.replies == []
-    assert fake_codex.calls == 0
+    assert fake_runner.calls == 0
 
 
 def test_process_edit_command_reports_force_with_lease_failures(monkeypatch) -> None:
@@ -816,9 +1012,9 @@ def test_process_edit_command_reports_force_with_lease_failures(monkeypatch) -> 
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             self.replies.append(text)
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     before = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
     after = GitWorktreeSnapshot(changed_paths=frozenset(), path_states={})
@@ -860,7 +1056,7 @@ def test_process_edit_command_reports_force_with_lease_failures(monkeypatch) -> 
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=fake_gh,
     )
 
@@ -899,9 +1095,9 @@ def test_edit_workflow_debug2_does_not_dump_full_prompt(
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             return None
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     monkeypatch.setattr(workflow_mod, "build_edit_prompt", lambda *args: "SECRET PROMPT BLOCK")
     monkeypatch.setattr(
@@ -923,7 +1119,7 @@ def test_edit_workflow_debug2_does_not_dump_full_prompt(
             mode="act",
             debug_level=2,
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -964,9 +1160,9 @@ def test_process_edit_command_fails_when_ahead_probe_errors(monkeypatch) -> None
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             self.replies.append(text)
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "ok"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("ok")
 
     monkeypatch.setattr(
         workflow_mod,
@@ -991,7 +1187,7 @@ def test_process_edit_command_fails_when_ahead_probe_errors(monkeypatch) -> None
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=fake_gh,
     )
 
@@ -1028,6 +1224,11 @@ def _setup_feature_branch_repo(tmp_path: Path) -> tuple[Path, str]:
 
     _run_git(worktree, "config", "user.email", "integration@example.test")
     _run_git(worktree, "config", "user.name", "Integration Tester")
+    # Disable any inherited gpg signing config so tests don't require a
+    # signing key on the developer's machine. The action runs on GitHub
+    # runners that don't sign commits either, so this matches real prod.
+    _run_git(worktree, "config", "commit.gpgsign", "false")
+    _run_git(worktree, "config", "tag.gpgsign", "false")
     _run_git(worktree, "checkout", "-b", "main")
 
     tracked_file = worktree / "app.txt"
@@ -1080,13 +1281,13 @@ def test_process_edit_command_git_integration_commits_and_pushes(
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             return None
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
             target = worktree / "app.txt"
             target.write_text(
                 target.read_text(encoding="utf-8") + "codex-change\n", encoding="utf-8"
             )
-            return "applied"
+            return _act_result("applied\nApplied edit to app.txt\n")
 
     workflow = EditWorkflow(
         ReviewConfig(
@@ -1095,7 +1296,7 @@ def test_process_edit_command_git_integration_commits_and_pushes(
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -1128,9 +1329,9 @@ def test_process_edit_command_git_integration_noop_preserves_branch(
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             return None
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
-            return "no changes"
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
+            return _act_result("no changes")
 
     workflow = EditWorkflow(
         ReviewConfig(
@@ -1139,7 +1340,7 @@ def test_process_edit_command_git_integration_noop_preserves_branch(
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -1172,8 +1373,8 @@ def test_process_edit_command_git_integration_rewritten_history_uses_force_push(
         def post_issue_comment(self, current_pr, text: str):  # noqa: ARG002
             return None
 
-    class _FakeCodexClient:
-        def execute_text(self, prompt: str, **kwargs: object) -> str:  # noqa: ARG002
+    class _FakeActRunner:
+        def execute(self, prompt: str, **kwargs: object) -> ActAgentResult:  # noqa: ARG002
             _run_git(
                 worktree,
                 "commit",
@@ -1182,7 +1383,7 @@ def test_process_edit_command_git_integration_rewritten_history_uses_force_push(
                 "-m",
                 "feature rewritten by codex",
             )
-            return "rewrote history"
+            return _act_result("rewrote history")
 
     workflow = EditWorkflow(
         ReviewConfig(
@@ -1191,7 +1392,7 @@ def test_process_edit_command_git_integration_rewritten_history_uses_force_push(
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        act_runner=cast(Any, _FakeActRunner()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 

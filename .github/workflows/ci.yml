@@ -32,3 +32,56 @@ jobs:
       - name: Run tests
         run: uv run pytest -q
 
+  eval-overlap:
+    # Sub-AC 4.1: gate the bake-off rollup. The job runs the full overlap
+    # pipeline (match → per-PR metrics → aggregate rollup) and fails when
+    # sample-wide overlap (micro.recall) drops below 80%. Until the
+    # 10-PR sample is fully populated with both Codex baselines and
+    # OpenRouter candidates, ``ALLOW_UNMEASURABLE=1`` lets the gate
+    # soft-pass with a warning. Flip to ``0`` to enforce strictly.
+    runs-on: ubuntu-latest
+    needs: lint-type-test
+    env:
+      ALLOW_UNMEASURABLE: "1"
+      OVERLAP_THRESHOLD: "0.80"
+      OVERLAP_METRIC: "micro.recall"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Install dependencies (dev)
+        run: uv sync --dev
+
+      - name: Run overlap pipeline + threshold gate
+        run: make eval-overlap-check
+
+      - name: Build consolidated parity report (Sub-AC 4.2)
+        # Regenerates eval/parity_report.md + eval/parity_report.json from
+        # the per-PR overlap, aggregate rollup, and Codex-vs-OpenRouter
+        # delta tiers so reviewers have a single human-readable artifact.
+        run: make eval-parity-report
+
+      - name: Drift-check parity report
+        # Confirms the freshly built report matches what would be
+        # rebuilt from source artifacts (idempotency guard).
+        run: make eval-parity-report-check
+
+      - name: Upload parity report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-report
+          path: |
+            eval/parity_report.md
+            eval/parity_report.json
+          if-no-files-found: error
+          retention-days: 30
+

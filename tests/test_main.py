@@ -156,8 +156,111 @@ def test_main_noops_for_unauthorized_codex_comment(monkeypatch, tmp_path, capsys
 
     rc = main_module.main()
 
+    captured = capsys.readouterr()
     assert rc == 0
-    assert "unauthorized commenter association CONTRIBUTOR" in capsys.readouterr().out
+    assert "unauthorized commenter association CONTRIBUTOR" in captured.out
+    # Structured audit-log entry on stderr — single line, parseable JSON payload.
+    audit_lines = [
+        line for line in captured.err.splitlines() if line.startswith("[audit:act-mode-gate] ")
+    ]
+    assert len(audit_lines) == 1
+    payload = json.loads(audit_lines[0][len("[audit:act-mode-gate] ") :])
+    assert payload["event"] == "act_mode_trigger_gate"
+    assert payload["outcome"] == "rejected"
+    assert payload["author_association"] == "CONTRIBUTOR"
+    assert payload["author"] == "octocat"
+    assert payload["comment_id"] == 123
+    assert payload["pr_number"] == 17
+    assert payload["event_name"] == "issue_comment"
+    assert payload["allowed_associations"] == ["MEMBER", "OWNER", "COLLABORATOR"]
+
+
+def test_main_audit_logs_allowed_commenter(monkeypatch, tmp_path, capsys) -> None:
+    event_payload = {
+        "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
+        "comment": {
+            "id": 999,
+            "body": "/codex fix docs",
+            "user": {"login": "owner-user"},
+            "author_association": "OWNER",
+        },
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event_payload), encoding="utf-8")
+
+    monkeypatch.setenv("GITHUB_ACTIONS", "1")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "issue_comment")
+    monkeypatch.setenv("CODEX_MODE", "act")
+
+    class _Workflow:
+        def __init__(self, config):  # noqa: ARG002
+            pass
+
+        def process_edit_command(self, *_args, **_kwargs) -> int:
+            return 0
+
+    monkeypatch.setattr(main_module, "EditWorkflow", _Workflow)
+    monkeypatch.setattr(main_module, "ReviewWorkflow", object)
+    monkeypatch.setattr(sys, "argv", ["codex-review"])
+
+    rc = main_module.main()
+
+    captured = capsys.readouterr()
+    assert rc == 0
+    audit_lines = [
+        line for line in captured.err.splitlines() if line.startswith("[audit:act-mode-gate] ")
+    ]
+    assert len(audit_lines) == 1
+    payload = json.loads(audit_lines[0][len("[audit:act-mode-gate] ") :])
+    assert payload["outcome"] == "allowed"
+    assert payload["author_association"] == "OWNER"
+    assert payload["author"] == "owner-user"
+
+
+def test_main_audit_logs_missing_author_association(monkeypatch, tmp_path, capsys) -> None:
+    event_payload = {
+        "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
+        "comment": {
+            "id": 555,
+            "body": "/codex fix docs",
+            "user": {"login": "stranger"},
+            # no author_association field — missing/unknown should be rejected
+        },
+    }
+    event_path = tmp_path / "event.json"
+    event_path.write_text(json.dumps(event_payload), encoding="utf-8")
+
+    monkeypatch.setenv("GITHUB_ACTIONS", "1")
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_path))
+    monkeypatch.setenv("GITHUB_TOKEN", "token")
+    monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "issue_comment")
+    monkeypatch.setenv("CODEX_MODE", "act")
+
+    class _UnexpectedWorkflow:
+        def __init__(self, config):  # noqa: ARG002
+            raise AssertionError("workflows must not run when author_association is missing")
+
+    monkeypatch.setattr(main_module, "EditWorkflow", _UnexpectedWorkflow)
+    monkeypatch.setattr(main_module, "ReviewWorkflow", _UnexpectedWorkflow)
+    monkeypatch.setattr(sys, "argv", ["codex-review"])
+
+    rc = main_module.main()
+
+    captured = capsys.readouterr()
+    assert rc == 0
+    audit_lines = [
+        line for line in captured.err.splitlines() if line.startswith("[audit:act-mode-gate] ")
+    ]
+    assert len(audit_lines) == 1
+    payload = json.loads(audit_lines[0][len("[audit:act-mode-gate] ") :])
+    assert payload["outcome"] == "rejected"
+    assert payload["author_association"] is None
 
 
 def test_main_fails_for_invalid_comment_payload(monkeypatch, tmp_path, capsys) -> None:

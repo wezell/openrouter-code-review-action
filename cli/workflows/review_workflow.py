@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as _dt
 import json
 import os
 import re
@@ -30,7 +31,16 @@ from ..core.models import (
     PriorCodexReviewComment,
     ReviewRunResult,
 )
-from ..core.review_state import PriorReviewKey
+from ..core.review_state import (
+    SEVERITY_CRITICAL,
+    SEVERITY_HIGH,
+    SEVERITY_LOW,
+    SEVERITY_MEDIUM,
+    PersistedReviewFinding,
+    PriorReviewKey,
+    PriorReviewState,
+)
+from ..core.review_state_manager import ReviewStateManager
 from ..core.sha_delta import ShaDeltaResolver, ShaDeltaResult
 from ..review.anchor_engine import build_anchor_maps
 from ..review.artifacts import ReviewArtifacts
@@ -99,6 +109,35 @@ def _extract_paths_from_unified_diff(diff_text: str) -> frozenset[str]:
             seen.add(raw_path)
             paths.append(raw_path)
     return frozenset(paths)
+
+
+def _utc_now_iso8601() -> str:
+    """Return the current UTC time as an ISO-8601 string (``Z``-suffixed)."""
+    return _dt.datetime.now(tz=_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _severity_from_priority(priority: int | None) -> str:
+    """Map the model's numeric ``priority`` to a persisted severity bucket.
+
+    Priorities follow the review schema (1=highest .. 5=lowest); we
+    bucket them into the canonical severity tiers so the persisted
+    record uses the same labels the rest of the action emits. ``None``
+    falls back to ``medium`` so first-time imports of legacy fixtures
+    still produce a valid record.
+    """
+    if priority is None:
+        return SEVERITY_MEDIUM
+    if priority <= 0:
+        return SEVERITY_CRITICAL
+    if priority == 1:
+        return SEVERITY_CRITICAL
+    if priority == 2:
+        return SEVERITY_HIGH
+    if priority == 3:
+        return SEVERITY_MEDIUM
+    if priority == 4:
+        return SEVERITY_LOW
+    return SEVERITY_LOW
 
 
 @dataclass(frozen=True)
@@ -810,15 +849,315 @@ class ReviewWorkflow:
         except Exception as exc:
             raise ReviewContractError(f"Invalid structured review output: {exc}") from exc
 
-    def _publish_summary(self, pr: PullRequestLikeProtocol, summary: str) -> None:
+    def _persist_review_state(
+        self,
+        *,
+        pr_number: int,
+        head_sha: str,
+        previous_head_sha: str | None,
+        review: ReviewRunResult,
+        posting_outcome: ReviewPostingOutcome,
+        summary_comment_id: int | None,
+        repo_root: Path,
+    ) -> PriorReviewState | None:
+        """Persist the new prior-review state envelope after a successful run.
+
+        Sub-AC 4.4 — once posting has finished and the run-summary
+        comment has been refreshed, the workflow lays down a new state
+        envelope keyed by ``(repo, pr, review_model, head_sha)``. The
+        envelope merges the *current* run's findings with anything the
+        prior run already knew about so the next run sees a single
+        consistent snapshot:
+
+        * ``findings`` are rebuilt from this run's
+          :class:`ReviewRunResult` (the "new findings").
+        * ``carried_forward_comment_ids`` are the union of the prior
+          run's carried-forward IDs and any prior published comment IDs
+          (inline + general + GraphQL thread). This means once a
+          finding has been published, its tracking ID survives across
+          runs even after the underlying finding is no longer reported.
+        * ``summary_comment_id`` is the new run's summary comment if
+          publish succeeded, otherwise the prior summary id is kept so
+          we can still locate the most recent summary on the next run.
+
+        Returns the freshly persisted :class:`PriorReviewState`, or
+        ``None`` when persistence was skipped (dry-run, missing
+        configuration, or recoverable filesystem failure). The method
+        never raises — persisted state is an optimisation, not a
+        correctness gate, so a failure at this rung must not unwind a
+        review that has already been posted to GitHub.
+        """
+        if self.config.dry_run:
+            self._debug(1, "DRY_RUN: skipping prior-review state persistence")
+            return None
+        if pr_number <= 0:
+            return None
+
+        review_model = (self.config.review_model or "").strip()
+        if not review_model:
+            self._debug(
+                1,
+                "Skipping prior-review state persistence: no review model on config",
+            )
+            return None
+
+        try:
+            current_key = PriorReviewKey(
+                repository=self.config.repository,
+                pr_number=pr_number,
+                review_model=review_model,
+                reviewed_head_sha=head_sha,
+            )
+        except ReviewContractError as exc:
+            self._debug(
+                1,
+                f"Skipping prior-review state persistence: invalid key ({exc})",
+            )
+            return None
+
+        runner_temp = os.environ.get("RUNNER_TEMP", "").strip() or None
+        try:
+            manager = ReviewStateManager.from_runner_temp(runner_temp)
+        except Exception as exc:  # noqa: BLE001 — defensive: state-dir setup
+            self._debug(
+                1,
+                f"Skipping prior-review state persistence: manager setup failed ({exc})",
+            )
+            return None
+
+        try:
+            lookup = manager.lookup_or_initialize(
+                current_key,
+                previous_head_sha=previous_head_sha,
+            )
+        except Exception as exc:  # noqa: BLE001 — defensive: read errors
+            self._debug(
+                1,
+                f"Skipping prior-review state persistence: prior lookup failed ({exc})",
+            )
+            return None
+
+        prior_state = lookup.state
+        merged_findings = self._build_persisted_findings(review, repo_root)
+        merged_carried_forward = self._merge_carried_forward_ids(
+            prior_state, posting_outcome
+        )
+        effective_summary_id = (
+            summary_comment_id
+            if summary_comment_id is not None
+            else prior_state.summary_comment_id
+        )
+        merged_notes = self._extend_notes(prior_state, posting_outcome)
+
+        try:
+            manager.record_review_run(
+                current_key,
+                findings=merged_findings,
+                carried_forward_comment_ids=merged_carried_forward,
+                summary_comment_id=effective_summary_id,
+                generated_at=_utc_now_iso8601(),
+                notes=merged_notes,
+            )
+        except Exception as exc:  # noqa: BLE001 — defensive: write errors
+            self._debug(
+                1,
+                f"Failed to persist prior-review state for {current_key.cache_key()}: {exc}",
+            )
+            return None
+
+        self._debug(
+            1,
+            "Persisted prior-review state at "
+            f"{manager.store.path_for(current_key)}: "
+            f"{len(merged_findings)} new finding(s), "
+            f"{len(merged_carried_forward)} carried-forward id(s)",
+        )
+        return PriorReviewState(
+            schema_version=prior_state.schema_version,
+            key=current_key,
+            findings=tuple(merged_findings),
+            carried_forward_comment_ids=tuple(merged_carried_forward),
+            summary_comment_id=effective_summary_id,
+            generated_at=None,
+            notes=tuple(merged_notes),
+        )
+
+    def _build_persisted_findings(
+        self, review: ReviewRunResult, repo_root: Path
+    ) -> list[PersistedReviewFinding]:
+        """Render :class:`ReviewRunResult` findings to persistable rows.
+
+        ``ReviewFinding`` carries an absolute file path; the persisted
+        record uses repo-root-relative paths for two reasons:
+
+        1. The next run's repo is a *fresh* checkout under a different
+           absolute path (GitHub Actions worker), so absolute paths are
+           not portable across runs.
+        2. The diff anchor in :class:`PersistedReviewFinding` is the
+           same shape the inline-comment posting layer uses
+           (relative path), so downstream consumers do not have to
+           normalise.
+
+        Findings whose anchor cannot be expressed as a positive line
+        range or whose path falls outside ``repo_root`` are skipped
+        rather than persisted with garbage anchors — these would only
+        cause spurious "still applicable" decisions on the next run.
+        """
+        rendered: list[PersistedReviewFinding] = []
+        for finding in review.findings:
+            location = finding.code_location
+            try:
+                relative_path = self._render_relative_path(
+                    location.absolute_file_path, repo_root
+                )
+            except ValueError as exc:
+                self._debug(
+                    2,
+                    "Skipping finding for persistence "
+                    f"({location.absolute_file_path}): {exc}",
+                )
+                continue
+            if location.start_line <= 0 or location.end_line < location.start_line:
+                self._debug(
+                    2,
+                    "Skipping finding for persistence "
+                    f"({relative_path}): invalid line range "
+                    f"{location.start_line}-{location.end_line}",
+                )
+                continue
+            try:
+                rendered.append(
+                    PersistedReviewFinding(
+                        path=relative_path,
+                        start_line=location.start_line,
+                        end_line=location.end_line,
+                        title=finding.title,
+                        body=finding.body,
+                        severity=_severity_from_priority(finding.priority),
+                        side=(finding.side or "RIGHT"),
+                        priority=finding.priority,
+                        confidence_score=finding.confidence_score,
+                    )
+                )
+            except ReviewContractError as exc:
+                self._debug(
+                    2,
+                    "Skipping finding for persistence "
+                    f"({relative_path}): contract error {exc}",
+                )
+                continue
+        return rendered
+
+    @staticmethod
+    def _render_relative_path(absolute_path: str, repo_root: Path) -> str:
+        """Return ``absolute_path`` rebased onto ``repo_root``.
+
+        Raises :class:`ValueError` if the path is not under ``repo_root``
+        or cannot be resolved — the caller logs and skips.
+        """
+        if not isinstance(absolute_path, str) or not absolute_path.strip():
+            raise ValueError("empty file path")
+        candidate = Path(absolute_path)
+        try:
+            relative = candidate.resolve().relative_to(repo_root.resolve())
+        except (OSError, ValueError) as exc:
+            raise ValueError(
+                f"path {absolute_path!r} not under repo_root {repo_root}"
+            ) from exc
+        return relative.as_posix()
+
+    def _merge_carried_forward_ids(
+        self,
+        prior_state: PriorReviewState,
+        posting_outcome: ReviewPostingOutcome,
+    ) -> list[str]:
+        """Union prior carried-forward IDs with prior published IDs.
+
+        The seed contract says findings published in earlier runs must
+        not be lost when the model stops re-emitting them. Merging the
+        prior run's published comment IDs (inline, general, and review
+        thread) into the current run's ``carried_forward_comment_ids``
+        gives the next run a single ledger of "everything we've ever
+        published on this PR" so it can correlate dismissed but still
+        relevant comments.
+
+        Order is stable (first-seen wins) so on-disk state is
+        deterministic and round-trips cleanly through the schema.
+        Posting-side IDs from *this* run are intentionally not included
+        — the in-memory ``ReviewPostingOutcome`` does not surface the
+        per-comment GitHub IDs (the underlying client returns no body),
+        so this run's published IDs land in the next run's
+        ``carried_forward_comment_ids`` only after they round-trip
+        through the prior-state envelope.
+        """
+        seen: set[str] = set()
+        merged: list[str] = []
+
+        def _push(value: object) -> None:
+            if value is None:
+                return
+            text = str(value).strip()
+            if not text or text in seen:
+                return
+            seen.add(text)
+            merged.append(text)
+
+        for value in prior_state.carried_forward_comment_ids:
+            _push(value)
+        for finding in prior_state.findings:
+            _push(finding.inline_comment_id)
+            _push(finding.general_comment_id)
+            _push(finding.review_thread_id)
+
+        # ``posting_outcome`` is unused for ID extraction today (see
+        # docstring) but accepting it keeps the signature ready for
+        # the day the GitHub client returns the created comment body.
+        del posting_outcome
+        return merged
+
+    def _extend_notes(
+        self,
+        prior_state: PriorReviewState,
+        posting_outcome: ReviewPostingOutcome,
+    ) -> tuple[str, ...]:
+        """Carry prior notes forward and append a stamp for this run.
+
+        The stamp records publish-side counts so an operator inspecting
+        the on-disk JSON can reconstruct what each run posted without
+        re-fetching from GitHub.
+        """
+        stamp = (
+            "openrouter-review:run "
+            f"posted={posting_outcome.published_count} "
+            f"remapped={posting_outcome.remapped_published_count} "
+            f"dropped={posting_outcome.dropped_count}"
+        )
+        return tuple(prior_state.notes) + (stamp,)
+
+    def _publish_summary(
+        self, pr: PullRequestLikeProtocol, summary: str
+    ) -> int | None:
+        """Publish (or refresh) the review summary issue comment.
+
+        Returns the new comment's ``id`` when the post succeeded so
+        :meth:`_persist_review_state` can record it on disk for the next
+        run to find. ``None`` is returned for the dry-run path and when
+        the underlying GitHub client returns an object without an ``id``
+        attribute (e.g. a test fake) — both cases mean "nothing to
+        persist for the summary anchor".
+        """
         if self.config.dry_run:
             self._debug(1, "DRY_RUN: would refresh summary issue comment")
-            return
+            return None
 
         delete_warnings = self._delete_prior_summary(pr)
         for warning in delete_warnings:
             print(warning, file=sys.stderr)
-        pr.as_issue().create_comment(summary)
+        created = pr.as_issue().create_comment(summary)
+        comment_id = getattr(created, "id", None)
+        if isinstance(comment_id, int):
+            return comment_id
+        return None
 
     def process_review(self, pr_number: int) -> ReviewWorkflowResult:
         """Process a code review for the given pull request."""
@@ -918,7 +1257,22 @@ class ReviewWorkflow:
             posting_outcome,
             reviewed_head_sha=head_sha,
         )
-        self._publish_summary(pr, summary_text)
+        summary_comment_id = self._publish_summary(pr, summary_text)
+
+        # Sub-AC 4.4 — persist the new state envelope under the current
+        # head SHA, merging prior findings/IDs into the new record so
+        # the next run sees a single consistent snapshot. The persistence
+        # rung is best-effort: a failure here must not unwind a review
+        # that has already been posted to GitHub.
+        self._persist_review_state(
+            pr_number=pr_number,
+            head_sha=head_sha,
+            previous_head_sha=self._previous_head_sha_hint(snapshots.issue_comments),
+            review=parsed_result,
+            posting_outcome=posting_outcome,
+            summary_comment_id=summary_comment_id,
+            repo_root=repo_root,
+        )
 
         return ReviewWorkflowResult(
             review=parsed_result,

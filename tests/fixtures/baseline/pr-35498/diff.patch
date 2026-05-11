@@ -1,0 +1,94 @@
+diff --git a/.claude/commands/gh-issue-troubleshoot.md b/.claude/commands/gh-issue-troubleshoot.md
+index aa9eb605c385..824e01975f1e 100644
+--- a/.claude/commands/gh-issue-troubleshoot.md
++++ b/.claude/commands/gh-issue-troubleshoot.md
+@@ -2,7 +2,7 @@
+ name: gh-issue-troubleshoot
+ description: Fix a dotCMS GitHub issue end-to-end — fetches the issue, researches the codebase, proposes a concrete code fix with before/after diffs, iterates on developer feedback, then applies the approved fix to a new git branch.
+ argument-hint: <issue-number|issue-url>
+-allowed-tools: Bash(gh issue view:*), Bash(gh api:*), Bash(gh auth status:*), Bash(gh repo view:*), Bash(git checkout -b:*), Bash(git diff:*), Bash(git log:*), Bash(git blame:*), Bash(./mvnw *), Read, Edit, Write, Grep, Glob, Agent, WebFetch
++allowed-tools: Bash(gh issue view:*), Bash(gh api:*), Bash(gh auth status:*), Bash(gh repo view:*), Bash(git checkout -b:*), Bash(git checkout:*), Bash(git pull:*), Bash(git show-ref:*), Bash(git diff:*), Bash(git log:*), Bash(git blame:*), Bash(./mvnw *), Read, Edit, Write, Grep, Glob, Agent, WebFetch
+ ---
+ 
+ **Input:** $ARGUMENTS
+@@ -167,22 +167,29 @@ After presenting the proposal:
+ 
+ ## Step 6 — Apply the fix
+ 
+-### 6a. Create a branch
++### 6a. Pull latest main and create a branch
++
++First, ensure the local `main` branch is up to date:
++
++```
++git checkout main
++git pull origin main
++```
+ 
+ Where `<short-slug>` is 3–5 words from the issue title, lowercased, hyphenated.
+ Examples:
+-- "NPE in workflow transitions" → `fix/issue-34901-workflow-npe`
+-- "Content editor fails to save" → `fix/issue-34902-content-editor-save`
+-- "REST endpoint returns 500 on missing param" → `fix/issue-34903-rest-missing-param-500`
++- "NPE in workflow transitions" → `issue-34901-workflow-npe`
++- "Content editor fails to save" → `issue-34902-content-editor-save`
++- "REST endpoint returns 500 on missing param" → `issue-34903-rest-missing-param-500`
+ 
+ Check whether the branch already exists before creating it:
+ 
+ ```
+-git show-ref --verify --quiet refs/heads/fix/issue-<N>-<short-slug>
++git show-ref --verify --quiet refs/heads/issue-<N>-<short-slug>
+ ```
+ 
+-- If the branch **does not exist** → `git checkout -b fix/issue-<N>-<short-slug>`
+-- If the branch **already exists** → `git checkout fix/issue-<N>-<short-slug>` (switch to it and continue applying changes on top)
++- If the branch **does not exist** → `git checkout -b issue-<N>-<short-slug>`
++- If the branch **already exists** → `git checkout issue-<N>-<short-slug>` (switch to it and continue applying changes on top)
+ 
+ ### 6b. Apply changes
+ 
+@@ -215,7 +222,7 @@ Print this block:
+ ```
+ ## Fix applied
+ 
+-- **Branch:** fix/issue-<N>-<slug>
++- **Branch:** issue-<N>-<slug>
+ - **Files changed:** <list each file>
+ - **Tests:** passed / skipped / failed
+ 
+diff --git a/.mvn/maven-build-cache-config.xml b/.mvn/maven-build-cache-config.xml
+index 516e3999fe5c..f500f6dadf68 100644
+--- a/.mvn/maven-build-cache-config.xml
++++ b/.mvn/maven-build-cache-config.xml
+@@ -28,7 +28,7 @@ https://maven.apache.org/extensions/maven-build-cache-extension/maven-build-cach
+     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/BUILD-CACHE-CONFIG/1.0.0 https://maven.apache.org/xsd/build-cache-config-1.0.0.xsd">
+     <configuration>
+-        <enabled>false</enabled>
++        <enabled>true</enabled>
+         <hashAlgorithm>SHA-256</hashAlgorithm>
+         <validateXml>true</validateXml>
+         <local>
+diff --git a/dotCMS/src/main/java/com/dotcms/rest/config/DotRestApplication.java b/dotCMS/src/main/java/com/dotcms/rest/config/DotRestApplication.java
+index efbf8124d338..f44ca0470f7f 100644
+--- a/dotCMS/src/main/java/com/dotcms/rest/config/DotRestApplication.java
++++ b/dotCMS/src/main/java/com/dotcms/rest/config/DotRestApplication.java
+@@ -20,6 +20,7 @@
+ import javax.ws.rs.ApplicationPath;
+ import org.glassfish.jersey.media.multipart.MultiPartFeature;
+ import org.glassfish.jersey.server.ResourceConfig;
++import org.glassfish.jersey.server.ServerProperties;
+ 
+ /**
+  * This class provides the list of all the REST end-points in dotCMS. Every new
+@@ -149,7 +150,8 @@ private void configureApplication() {
+ 			packages.add(TelemetryResource.class.getPackageName());
+ 		}
+ 
+-		register(MultiPartFeature.class)
++		property(ServerProperties.WADL_FEATURE_DISABLE, true)
++		.register(MultiPartFeature.class)
+ 		.register(JacksonJaxbJsonProvider.class)
+ 		.registerClasses(customClasses.keySet())
+ 		.packages(packages.toArray(new String[0])

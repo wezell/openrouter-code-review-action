@@ -43,8 +43,51 @@ DEFAULT_REVIEW_MODEL = "anthropic/claude-opus-4.7"
 DEFAULT_ACT_MODEL = "anthropic/claude-opus-4.7"
 
 _VALID_REASONING_EFFORTS = frozenset({"minimal", "low", "medium", "high"})
-_VALID_WEB_SEARCH_MODES = frozenset({"disabled", "cached", "live"})
+WEB_SEARCH_MODES: frozenset[str] = frozenset({"disabled", "cached", "live"})
+_VALID_WEB_SEARCH_MODES = WEB_SEARCH_MODES  # backwards-compat alias
 _KNOWN_MODE_KEYS = frozenset({"model", "reasoning_effort", "web_search_mode"})
+
+# OpenRouter exposes web-search via a ``:online`` model-slug suffix. We map
+# the three-state Codex-style web_search_mode knob (disabled/cached/live)
+# onto that single suffix as follows — see AC 5 of the OpenRouter migration:
+#
+#   * ``live``      → append ``:online`` so the provider runs a fresh web
+#                     search for every request.
+#   * ``cached``    → leave the slug alone. OpenRouter does not currently
+#                     expose a cached-only ``:online`` variant; preserving
+#                     ``cached`` as a distinct enum value keeps the door
+#                     open for a future plugin-cache wiring without
+#                     re-shaping the config schema.
+#   * ``disabled``  → leave the slug alone so no web search happens.
+#
+# The helper is idempotent: if the caller already passed ``model:online``
+# we return it untouched rather than producing ``model:online:online``.
+ONLINE_SUFFIX = ":online"
+
+
+def apply_web_search_mode(model: str, mode: str | None) -> str:
+    """Return the OpenRouter model slug for ``model`` under ``mode``.
+
+    ``mode`` is one of ``disabled``/``cached``/``live`` (the Codex-style
+    triplet preserved across the migration). ``live`` is the only mode
+    that materialises as a slug-level change today: it appends
+    ``:online`` so OpenRouter routes the request through its web-search
+    variant. The other two modes return the slug unchanged.
+
+    Unknown / falsy modes default to the slug as-is rather than raising.
+    Validation of the *config value itself* happens at file-load time
+    (see :func:`_coerce_mode_block`) so a downstream bug here cannot
+    cause a silent fallback to live web search.
+    """
+
+    if not isinstance(model, str) or not model.strip():
+        return model
+    slug = model.strip()
+    if mode != "live":
+        return slug
+    if slug.endswith(ONLINE_SUFFIX):
+        return slug
+    return f"{slug}{ONLINE_SUFFIX}"
 
 
 @dataclass(frozen=True)

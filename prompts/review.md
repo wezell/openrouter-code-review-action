@@ -99,6 +99,7 @@ OUTPUT FORMAT:
       "body": "<valid Markdown explaining *why* this is a problem; cite files/lines/functions>",
       "confidence_score": <float 0.0-1.0>,
       "priority": <int 0-3, optional>,
+      "side": "RIGHT" | "LEFT" | null,
       "code_location": {
         "absolute_file_path": "<file path>",
         "line_range": {"start": <int>, "end": <int>}
@@ -122,4 +123,5 @@ OUTPUT FORMAT:
 * The code_location field is required and must include absolute_file_path and line_range.
 *Line ranges must be as short as possible for interpreting the issue (avoid ranges over 5–10 lines; pick the most suitable subrange).
 * The code_location should overlap with the diff.
+* `side` is the GitHub inline-comment "side" field. Set "RIGHT" when the comment anchors on an added or context line in the new file (the common case). Set "LEFT" only when the comment anchors on a *deleted* line. Use `null` to let the poster pick the default ("RIGHT").
 * Do not generate a PR fix.

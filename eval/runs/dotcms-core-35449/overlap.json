@@ -1,0 +1,30 @@
+{
+  "counts": {
+    "codex_only": 0,
+    "codex_total": 0,
+    "matched_pairs": 0,
+    "openrouter_only": 0,
+    "openrouter_total": 0
+  },
+  "fixture_pr_id": "pr-35449",
+  "generated_at": "2026-05-07T17:03:29Z",
+  "generator": "eval/overlap_metrics.py",
+  "head_sha_baseline": "76fb121bddeac5943fde9060014546a984dd6a5e",
+  "head_sha_candidate": null,
+  "metrics": {
+    "f1": null,
+    "false_negative": 0,
+    "false_positive": 0,
+    "precision": null,
+    "recall": null,
+    "true_positive": 0
+  },
+  "models": {
+    "codex": "gpt-5.4",
+    "openrouter": null
+  },
+  "pr_id": "dotcms-core-35449",
+  "schema_version": "1",
+  "status": "pending",
+  "tolerance_lines": 3
+}
