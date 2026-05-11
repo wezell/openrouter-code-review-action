@@ -79,14 +79,10 @@ def test_summary_metadata_uses_openrouter_marker_in_html_comment() -> None:
 
 def test_parse_reviewed_head_sha_returns_none_on_malformed_payloads() -> None:
     # Malformed JSON inside the marker
-    assert (
-        parse_reviewed_head_sha("<!-- openrouter-review-meta {not json} -->") is None
-    )
+    assert parse_reviewed_head_sha("<!-- openrouter-review-meta {not json} -->") is None
     # Wrong field type
     assert (
-        parse_reviewed_head_sha(
-            '<!-- openrouter-review-meta {"reviewed_head_sha": 123} -->'
-        )
+        parse_reviewed_head_sha('<!-- openrouter-review-meta {"reviewed_head_sha": 123} -->')
         is None
     )
     # No metadata block at all
@@ -116,8 +112,7 @@ def test_prior_review_key_cache_key_uses_namespaced_prefix() -> None:
         reviewed_head_sha="deadbeef",
     )
     assert key.cache_key() == (
-        "openrouter-review-v1-owner-repo-pr-17-"
-        "anthropic-claude-opus-4.7-deadbeef"
+        "openrouter-review-v1-owner-repo-pr-17-anthropic-claude-opus-4.7-deadbeef"
     )
 
 
@@ -378,12 +373,21 @@ def test_prior_review_state_with_findings_replaces_only_findings() -> None:
 
 def test_prior_review_state_helpers_collect_published_ids() -> None:
     findings = (
-        _sample_finding(inline_comment_id=11, general_comment_id=None,
-                        review_thread_id="t1"),
-        _sample_finding(inline_comment_id=None, general_comment_id=22,
-                        review_thread_id=None, start_line=20, end_line=20),
-        _sample_finding(inline_comment_id=33, general_comment_id=None,
-                        review_thread_id="t3", start_line=30, end_line=30),
+        _sample_finding(inline_comment_id=11, general_comment_id=None, review_thread_id="t1"),
+        _sample_finding(
+            inline_comment_id=None,
+            general_comment_id=22,
+            review_thread_id=None,
+            start_line=20,
+            end_line=20,
+        ),
+        _sample_finding(
+            inline_comment_id=33,
+            general_comment_id=None,
+            review_thread_id="t3",
+            start_line=30,
+            end_line=30,
+        ),
     )
     state = _sample_state().with_findings(findings)
 

@@ -40,7 +40,6 @@ from tests.baseline_loader import (
     load_baseline_fixture,
 )
 
-
 # ---------------------------------------------------------------------------
 # Real fixture sweep — every checked-in fixture must validate.
 # ---------------------------------------------------------------------------
@@ -147,13 +146,17 @@ def _write_fixture(
     merge_sha = "c" * 40
     codex_head_sha = merge_sha
 
-    diff_text = diff if diff is not None else (
-        "diff --git a/src/Foo.java b/src/Foo.java\n"
-        "--- a/src/Foo.java\n"
-        "+++ b/src/Foo.java\n"
-        "@@ -1,1 +1,1 @@\n"
-        "-old\n"
-        "+new\n"
+    diff_text = (
+        diff
+        if diff is not None
+        else (
+            "diff --git a/src/Foo.java b/src/Foo.java\n"
+            "--- a/src/Foo.java\n"
+            "+++ b/src/Foo.java\n"
+            "@@ -1,1 +1,1 @@\n"
+            "-old\n"
+            "+new\n"
+        )
     )
     (pr_dir / "diff.patch").write_text(diff_text, encoding="utf-8")
 
@@ -450,9 +453,7 @@ def test_load_all_aggregates_multiple_failures(tmp_path: Path, monkeypatch) -> N
         metadata_overrides={"headRefOid": "deadbeef"},
     )
     with pytest.raises(BaselineFixtureError) as info:
-        load_all_baseline_fixtures(
-            fixtures_dir=fixtures_dir, sample_path=sample_path
-        )
+        load_all_baseline_fixtures(fixtures_dir=fixtures_dir, sample_path=sample_path)
     msg = str(info.value)
     assert "pr-99100" in msg
     assert "pr-99101" in msg

@@ -120,7 +120,7 @@ def runs_id_to_fixture_id(runs_id: str) -> str:
             f"runs id {runs_id!r} does not start with "
             f"{_RUNS_PR_PREFIX!r}; expected ``{_RUNS_PR_PREFIX}<number>``"
         )
-    suffix = runs_id[len(_RUNS_PR_PREFIX):]
+    suffix = runs_id[len(_RUNS_PR_PREFIX) :]
     if not suffix:
         raise ValueError(f"runs id {runs_id!r} is missing the numeric suffix")
     return f"{_FIXTURE_PR_PREFIX}{suffix}"
@@ -133,7 +133,7 @@ def fixture_id_to_runs_id(fixture_id: str) -> str:
             f"fixture id {fixture_id!r} does not start with "
             f"{_FIXTURE_PR_PREFIX!r}; expected ``{_FIXTURE_PR_PREFIX}<number>``"
         )
-    suffix = fixture_id[len(_FIXTURE_PR_PREFIX):]
+    suffix = fixture_id[len(_FIXTURE_PR_PREFIX) :]
     if not suffix:
         raise ValueError(f"fixture id {fixture_id!r} is missing the numeric suffix")
     return f"{_RUNS_PR_PREFIX}{suffix}"
@@ -180,9 +180,7 @@ def compute_metrics(tp: int, fp: int, fn: int) -> OverlapMetrics:
     ``ValueError`` because they cannot represent a valid count.
     """
     if tp < 0 or fp < 0 or fn < 0:
-        raise ValueError(
-            f"counts must be non-negative (tp={tp}, fp={fp}, fn={fn})"
-        )
+        raise ValueError(f"counts must be non-negative (tp={tp}, fp={fp}, fn={fn})")
     precision = _safe_ratio(tp, tp + fp)
     recall = _safe_ratio(tp, tp + fn)
     if precision is None or recall is None:
@@ -192,8 +190,12 @@ def compute_metrics(tp: int, fp: int, fn: int) -> OverlapMetrics:
     else:
         f1 = round(2 * precision * recall / (precision + recall), 4)
     return OverlapMetrics(
-        tp=tp, fp=fp, fn=fn,
-        precision=precision, recall=recall, f1=f1,
+        tp=tp,
+        fp=fp,
+        fn=fn,
+        precision=precision,
+        recall=recall,
+        f1=f1,
     )
 
 
@@ -239,8 +241,12 @@ def build_overlap_record(
         metrics = compute_metrics(tp, fp, fn)
     else:
         metrics = OverlapMetrics(
-            tp=tp, fp=fp, fn=fn,
-            precision=None, recall=None, f1=None,
+            tp=tp,
+            fp=fp,
+            fn=fn,
+            precision=None,
+            recall=None,
+            f1=None,
         )
 
     return {
@@ -413,10 +419,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="append",
         dest="pr_ids",
         metavar="ID",
-        help=(
-            "Compute only this run id (e.g. ``dotcms-core-35449``). May be "
-            "repeated."
-        ),
+        help=("Compute only this run id (e.g. ``dotcms-core-35449``). May be repeated."),
     )
     parser.add_argument(
         "--check",
@@ -430,10 +433,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--tolerance",
         type=int,
         default=LINE_PROXIMITY_TOLERANCE,
-        help=(
-            f"± lines tolerance for proximity matching "
-            f"(default: {LINE_PROXIMITY_TOLERANCE})."
-        ),
+        help=(f"± lines tolerance for proximity matching (default: {LINE_PROXIMITY_TOLERANCE})."),
     )
     args = parser.parse_args(argv)
 

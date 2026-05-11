@@ -187,9 +187,7 @@ def load_dataset(path: Path | None = None, *, sample_path: Path | None = None) -
     return validate_dataset(dataset_doc, sample_index=sample_index)
 
 
-def validate_dataset(
-    doc: Mapping[str, Any], *, sample_index: Mapping[str, str]
-) -> LabeledDataset:
+def validate_dataset(doc: Mapping[str, Any], *, sample_index: Mapping[str, str]) -> LabeledDataset:
     """Validate a parsed dataset mapping against the schema and the sample registry.
 
     ``sample_index`` maps ``pr_id -> head_sha`` for cross-reference.
@@ -314,9 +312,7 @@ def _validate_finding(
 
     keywords_raw = raw.get("match_keywords")
     if not isinstance(keywords_raw, list) or not all(isinstance(k, str) for k in keywords_raw):
-        raise DatasetValidationError(
-            f"{where}: match_keywords must be a list of strings"
-        )
+        raise DatasetValidationError(f"{where}: match_keywords must be a list of strings")
     if not keywords_raw:
         # match_keywords is the universal anchor — even FP-trap entries
         # with no specific file target need distinctive strings the
@@ -389,9 +385,7 @@ def _require_str(raw: Mapping[str, Any], key: str, *, where: str = "dataset") ->
     return value
 
 
-def _require_one_of(
-    raw: Mapping[str, Any], key: str, allowed: Iterable[str], *, where: str
-) -> str:
+def _require_one_of(raw: Mapping[str, Any], key: str, allowed: Iterable[str], *, where: str) -> str:
     value = raw.get(key)
     allowed_set = frozenset(allowed)
     if not isinstance(value, str) or value not in allowed_set:

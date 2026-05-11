@@ -23,7 +23,6 @@ import pytest
 
 from eval import compare_findings as cf
 
-
 # ---------------------------------------------------------------------------
 # Fixture builders
 # ---------------------------------------------------------------------------
@@ -107,9 +106,7 @@ def _wrapper(
 
 
 @pytest.fixture
-def staged_fixtures(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> tuple[Path, Path, Path]:
+def staged_fixtures(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
     baseline = tmp_path / "baseline"
     candidate = tmp_path / "candidate"
     report = tmp_path / "report"
@@ -142,15 +139,22 @@ def test_pending_when_both_sides_have_no_capture(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="aa" * 20, findings=None,
-            run="codex", model="gpt-5.4", capture_status="pending",
+            pr_id=pr,
+            head_sha="aa" * 20,
+            findings=None,
+            run="codex",
+            model="gpt-5.4",
+            capture_status="pending",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="aa" * 20, findings=None,
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha="aa" * 20,
+            findings=None,
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="unfilled",
         ),
     )
@@ -168,15 +172,22 @@ def test_codex_only_status(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="bb" * 20, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha="bb" * 20,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="bb" * 20, findings=None,
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha="bb" * 20,
+            findings=None,
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="unfilled",
         ),
     )
@@ -192,15 +203,22 @@ def test_head_sha_drift_when_captures_disagree(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="aa" * 20, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha="aa" * 20,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="cc" * 20, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha="cc" * 20,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -226,17 +244,22 @@ def test_exact_line_match_pairs_findings(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="dd" * 20,
+            pr_id=pr,
+            head_sha="dd" * 20,
             findings=[_finding(start=42, end=44, priority=1)],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="dd" * 20,
+            pr_id=pr,
+            head_sha="dd" * 20,
             findings=[_finding(start=43, end=44, priority=1)],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -256,23 +279,28 @@ def test_proximity_match_within_tolerance_outside_dropped(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="ee" * 20,
+            pr_id=pr,
+            head_sha="ee" * 20,
             findings=[
                 _finding(start=10, priority=1),  # near to OR's 12
                 _finding(start=200, priority=2, title="🟡 [P2] foo.py:200 x"),
             ],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="ee" * 20,
+            pr_id=pr,
+            head_sha="ee" * 20,
             findings=[
                 _finding(start=12, priority=1),  # within tolerance
                 _finding(start=500, priority=1, title="🔴 [P1] foo.py:500 y"),
             ],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -295,17 +323,22 @@ def test_different_paths_never_match(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="ff" * 20,
+            pr_id=pr,
+            head_sha="ff" * 20,
             findings=[_finding(path="a.py", start=10)],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="ff" * 20,
+            pr_id=pr,
+            head_sha="ff" * 20,
             findings=[_finding(path="b.py", start=10)],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -323,17 +356,22 @@ def test_severity_mismatch_recorded_in_match_payload(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="11" * 20,
+            pr_id=pr,
+            head_sha="11" * 20,
             findings=[_finding(start=20, priority=1, title="🔴 [P1] foo.py:20 a")],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="11" * 20,
+            pr_id=pr,
+            head_sha="11" * 20,
             findings=[_finding(start=20, priority=2, title="🟡 [P2] foo.py:20 a")],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -352,24 +390,29 @@ def test_delta_by_severity_signed_difference(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="22" * 20,
+            pr_id=pr,
+            head_sha="22" * 20,
             findings=[
                 _finding(start=10, priority=1),
                 _finding(start=20, priority=1, title="🔴 [P1] foo.py:20 b"),
             ],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="22" * 20,
+            pr_id=pr,
+            head_sha="22" * 20,
             findings=[
                 _finding(start=10, priority=1),
                 _finding(start=200, priority=2, title="🟡 [P2] bar.py:200 c", path="bar.py"),
                 _finding(start=300, priority=3, title="⚪ [P3] bar.py:300 d", path="bar.py"),
             ],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -399,24 +442,31 @@ def test_write_report_emits_per_pr_and_summary(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="33" * 20,
+            pr_id=pr,
+            head_sha="33" * 20,
             findings=[_finding(start=10, priority=1)],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="33" * 20,
+            pr_id=pr,
+            head_sha="33" * 20,
             findings=[_finding(start=10, priority=1)],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
 
     comparisons = cf.compare_all([pr])
     written, summary_path = cf.write_report(
-        comparisons, report_root=report, summary_path=report / "_summary.json",
+        comparisons,
+        report_root=report,
+        summary_path=report / "_summary.json",
         generated_at="2026-05-07T00:00:00Z",
     )
     assert len(written) == 1
@@ -444,15 +494,22 @@ def test_check_mode_flags_drift_then_clears(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="44" * 20, findings=None,
-            run="codex", model="gpt-5.4", capture_status="pending",
+            pr_id=pr,
+            head_sha="44" * 20,
+            findings=None,
+            run="codex",
+            model="gpt-5.4",
+            capture_status="pending",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="44" * 20, findings=None,
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha="44" * 20,
+            findings=None,
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="unfilled",
         ),
     )
@@ -473,8 +530,12 @@ def test_main_unknown_pr_id_errors(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="55" * 20, findings=None,
-            run="codex", model="gpt-5.4", capture_status="pending",
+            pr_id=pr,
+            head_sha="55" * 20,
+            findings=None,
+            run="codex",
+            model="gpt-5.4",
+            capture_status="pending",
         ),
     )
     with pytest.raises(SystemExit):

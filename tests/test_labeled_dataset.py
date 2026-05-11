@@ -223,20 +223,14 @@ def test_validate_dataset_rejects_invalid_class():
 
 
 def test_validate_dataset_rejects_confirmed_with_null_line_range():
-    doc = _make_dataset_doc(
-        [_make_finding(line_range=None, line_range_status="confirmed")]
-    )
+    doc = _make_dataset_doc([_make_finding(line_range=None, line_range_status="confirmed")])
     with pytest.raises(DatasetValidationError, match="must pin its line numbers"):
         validate_dataset(doc, sample_index=_GOOD_SAMPLE_INDEX)
 
 
 def test_validate_dataset_rejects_unverified_with_set_line_range():
     doc = _make_dataset_doc(
-        [
-            _make_finding(
-                line_range={"start": 5, "end": 7}, line_range_status="unverified"
-            )
-        ]
+        [_make_finding(line_range={"start": 5, "end": 7}, line_range_status="unverified")]
     )
     with pytest.raises(DatasetValidationError, match="confirm the entry or null out"):
         validate_dataset(doc, sample_index=_GOOD_SAMPLE_INDEX)
@@ -244,11 +238,7 @@ def test_validate_dataset_rejects_unverified_with_set_line_range():
 
 def test_validate_dataset_rejects_inverted_line_range():
     doc = _make_dataset_doc(
-        [
-            _make_finding(
-                line_range={"start": 20, "end": 10}, line_range_status="confirmed"
-            )
-        ]
+        [_make_finding(line_range={"start": 20, "end": 10}, line_range_status="confirmed")]
     )
     with pytest.raises(DatasetValidationError, match="must be ≥ line_range.start"):
         validate_dataset(doc, sample_index=_GOOD_SAMPLE_INDEX)
@@ -256,11 +246,7 @@ def test_validate_dataset_rejects_inverted_line_range():
 
 def test_validate_dataset_rejects_zero_or_negative_lines():
     doc = _make_dataset_doc(
-        [
-            _make_finding(
-                line_range={"start": 0, "end": 5}, line_range_status="confirmed"
-            )
-        ]
+        [_make_finding(line_range={"start": 0, "end": 5}, line_range_status="confirmed")]
     )
     with pytest.raises(DatasetValidationError, match="must be ≥ 1"):
         validate_dataset(doc, sample_index=_GOOD_SAMPLE_INDEX)
@@ -378,15 +364,9 @@ def test_dataset_pr_ids_preserves_first_occurrence_order():
     }
     doc = _make_dataset_doc(
         [
-            _make_finding(
-                id="gt-001-001", pr_id="sample-pr-bb", head_sha="2222222222222222"
-            ),
-            _make_finding(
-                id="gt-001-002", pr_id="sample-pr-aa", head_sha="1111111111111111"
-            ),
-            _make_finding(
-                id="gt-001-003", pr_id="sample-pr-bb", head_sha="2222222222222222"
-            ),
+            _make_finding(id="gt-001-001", pr_id="sample-pr-bb", head_sha="2222222222222222"),
+            _make_finding(id="gt-001-002", pr_id="sample-pr-aa", head_sha="1111111111111111"),
+            _make_finding(id="gt-001-003", pr_id="sample-pr-bb", head_sha="2222222222222222"),
         ]
     )
     dataset = validate_dataset(doc, sample_index=sample_index)

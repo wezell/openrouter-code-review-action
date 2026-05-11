@@ -21,6 +21,7 @@ Sub-AC 4.3 acceptance criteria:
 - review API returns 200/201 with no 422 errors
 - inline anchors parse from validated payloads onto real diff lines
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -36,7 +37,6 @@ from cli.core.models import (
     ReviewRunResult,
 )
 from cli.workflows.review_workflow import ReviewWorkflow
-
 
 # ---------------------------------------------------------------------------
 # Fakes — small enough to read in one screen, large enough to mimic the
@@ -186,11 +186,7 @@ def _assert_batched_review_2xx(pr: _PullRequest) -> dict:
 
 
 _ADDED_ONLY_PATCH = (
-    "@@ -0,0 +1,4 @@\n"
-    "+def greet(name):\n"
-    '+    print(f"hello {name}")\n'
-    "+    return None\n"
-    "+\n"
+    '@@ -0,0 +1,4 @@\n+def greet(name):\n+    print(f"hello {name}")\n+    return None\n+\n'
 )
 
 # A patch with both deletions and additions in a single hunk. Head lines
@@ -208,23 +204,12 @@ _MIXED_PATCH = (
     " context_d\n"
 )
 
-_SECOND_FILE_PATCH = (
-    "@@ -0,0 +1,2 @@\n"
-    "+# new module\n"
-    "+VALUE = 42\n"
-)
+_SECOND_FILE_PATCH = "@@ -0,0 +1,2 @@\n+# new module\n+VALUE = 42\n"
 
 # Renamed file: the PR's ``status`` is "renamed" and ``previous_filename``
 # carries the old path. The patch body still describes the diff under the
 # *new* filename.
-_RENAMED_PATCH = (
-    "@@ -1,3 +1,3 @@\n"
-    "-orig_one\n"
-    "+renamed_one\n"
-    " context\n"
-    "-orig_two\n"
-    "+renamed_two\n"
-)
+_RENAMED_PATCH = "@@ -1,3 +1,3 @@\n-orig_one\n+renamed_one\n context\n-orig_two\n+renamed_two\n"
 
 
 # ---------------------------------------------------------------------------

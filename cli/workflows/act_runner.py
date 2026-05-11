@@ -35,10 +35,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ..clients.aider_client import (
+    DEFAULT_OPENROUTER_API_BASE,
     AiderClient,
     AiderExecutionError,
     AiderResult,
-    DEFAULT_OPENROUTER_API_BASE,
 )
 from ..core.config import ReviewConfig
 from ..core.exceptions import ConfigurationError
@@ -177,7 +177,9 @@ class ActModeRunner:
         if not message:
             raise ConfigurationError("Act-mode prompt is empty; refusing to invoke aider")
 
-        cwd = Path(repo_path).expanduser().resolve() if repo_path else self.config.resolved_repo_root
+        cwd = (
+            Path(repo_path).expanduser().resolve() if repo_path else self.config.resolved_repo_root
+        )
 
         try:
             aider_result = self._aider_client.run(
@@ -223,8 +225,7 @@ class ActModeRunner:
     def _require_act_mode(self) -> None:
         if self.config.mode != "act":
             raise ConfigurationError(
-                "ActModeRunner invoked while config.mode is "
-                f"{self.config.mode!r}; expected 'act'."
+                f"ActModeRunner invoked while config.mode is {self.config.mode!r}; expected 'act'."
             )
         if not self.model.strip():
             raise ConfigurationError(
@@ -232,9 +233,7 @@ class ActModeRunner:
                 "OpenRouter config file (e.g. .openrouter-review.yml)."
             )
         if not self.config.openrouter_api_key.strip():
-            raise ConfigurationError(
-                "OPENROUTER_API_KEY is required for act mode but is empty."
-            )
+            raise ConfigurationError("OPENROUTER_API_KEY is required for act mode but is empty.")
 
     def _tee_streams(self, stdout: str, stderr: str) -> None:
         """Forward captured aider streams to the host process.
@@ -320,5 +319,3 @@ def _tail(text: str, limit: int) -> str:
     if len(text) <= limit:
         return text
     return "… (truncated)\n" + text[-limit:]
-
-

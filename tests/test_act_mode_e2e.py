@@ -38,7 +38,6 @@ from cli.clients.git_ops import GitWorktreeSnapshot
 from cli.workflows import edit_workflow as edit_workflow_module
 from cli.workflows.act_runner import ActAgentResult
 
-
 # ---------------------------------------------------------------------------
 # Shared fakes — wired in via monkeypatch at the dependency boundaries the
 # real production code uses (GitHubClient, ActModeRunner, git_ops module
@@ -85,9 +84,7 @@ class _FakePR:
     base = _Base()
 
     def get_review_comment(self, comment_id: int) -> Any:  # pragma: no cover
-        raise AssertionError(
-            "review-comment lookup should not be needed for these tests"
-        )
+        raise AssertionError("review-comment lookup should not be needed for these tests")
 
 
 @dataclass
@@ -103,7 +100,10 @@ class _FakeGitHubClient:
         return []
 
     def reply_to_review_comment(
-        self, pr: _FakePR, comment_id: int, text: str  # noqa: ARG002
+        self,
+        pr: _FakePR,
+        comment_id: int,
+        text: str,  # noqa: ARG002
     ) -> None:
         self.replies.append(("review_comment", comment_id, text))
 
@@ -217,7 +217,9 @@ def _install_e2e_harness(
     # construction inside EditWorkflow.__init__).
     fake_gh = _FakeGitHubClient()
     monkeypatch.setattr(
-        edit_workflow_module, "GitHubClient", lambda config: fake_gh  # noqa: ARG005
+        edit_workflow_module,
+        "GitHubClient",
+        lambda config: fake_gh,  # noqa: ARG005
     )
 
     # Pre/post snapshots — unique snapshots so the diff records the
@@ -231,12 +233,8 @@ def _install_e2e_harness(
     snapshots = iter([before, after])
     head_shas = iter(["sha-before", "sha-after"])
 
-    monkeypatch.setattr(
-        edit_workflow_module, "git_worktree_snapshot", lambda: next(snapshots)
-    )
-    monkeypatch.setattr(
-        edit_workflow_module, "git_current_head_sha", lambda: next(head_shas)
-    )
+    monkeypatch.setattr(edit_workflow_module, "git_worktree_snapshot", lambda: next(snapshots))
+    monkeypatch.setattr(edit_workflow_module, "git_current_head_sha", lambda: next(head_shas))
     monkeypatch.setattr(
         edit_workflow_module,
         "git_remote_head_sha",
@@ -284,9 +282,12 @@ def _install_e2e_harness(
     # lazily. We seed runner_holder with a pending value so tests can
     # always inspect ``harness.act_runner`` even if no runner was made
     # (rejection paths). Use a sentinel runner that fails loudly on use.
-    sentinel = _FakeActRunner(config=None, raise_exc=AssertionError(
-        "ActModeRunner.execute called for a path that should have rejected first"
-    ))
+    sentinel = _FakeActRunner(
+        config=None,
+        raise_exc=AssertionError(
+            "ActModeRunner.execute called for a path that should have rejected first"
+        ),
+    )
     runner_holder.setdefault("runner", sentinel)
 
     return _E2EHarness(
@@ -349,9 +350,7 @@ def test_e2e_issue_comment_trusted_author_drives_aider_and_pushes(
     assert kind == "issue_comment"
     # Audit log records the allowed decision.
     err = capsys.readouterr().err
-    audit_lines = [
-        line for line in err.splitlines() if line.startswith("[audit:act-mode-gate] ")
-    ]
+    audit_lines = [line for line in err.splitlines() if line.startswith("[audit:act-mode-gate] ")]
     assert len(audit_lines) == 1
     payload_audit = json.loads(audit_lines[0][len("[audit:act-mode-gate] ") :])
     assert payload_audit["outcome"] == "allowed"
@@ -456,9 +455,7 @@ def test_e2e_untrusted_author_associations_are_rejected_before_aider(
     captured = capsys.readouterr()
     assert "unauthorized commenter association" in captured.out
     audit_lines = [
-        line
-        for line in captured.err.splitlines()
-        if line.startswith("[audit:act-mode-gate] ")
+        line for line in captured.err.splitlines() if line.startswith("[audit:act-mode-gate] ")
     ]
     assert len(audit_lines) == 1
     audit = json.loads(audit_lines[0][len("[audit:act-mode-gate] ") :])

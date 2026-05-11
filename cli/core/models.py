@@ -174,9 +174,7 @@ class ReviewFinding:
                 )
             side = normalised
         else:
-            raise ReviewContractError(
-                "Review finding field 'side' must be a string or null"
-            )
+            raise ReviewContractError("Review finding field 'side' must be a string or null")
 
         return cls(
             title=title_raw,

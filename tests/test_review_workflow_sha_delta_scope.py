@@ -49,7 +49,6 @@ from cli.workflows.review_workflow import (
     _ShaDeltaScope,
 )
 
-
 # ---------------------------------------------------------------------------
 # Shared fakes (smaller, focused subset of test_review_workflow.py's stubs)
 # ---------------------------------------------------------------------------
@@ -258,10 +257,7 @@ def test_extract_paths_from_unified_diff_handles_quoted_post_image() -> None:
     drives anchoring, so the regex specifically tolerates quoted
     post-image paths and we must decode the C-style escapes git emits.
     """
-    diff = (
-        'diff --git a/src/foo.py b/"src/renamed\\t.py"\n'
-        "@@ -1 +1 @@\n-old\n+new\n"
-    )
+    diff = 'diff --git a/src/foo.py b/"src/renamed\\t.py"\n@@ -1 +1 @@\n-old\n+new\n'
     paths = _extract_paths_from_unified_diff(diff)
     assert paths == frozenset({"src/renamed\t.py"})
 
@@ -642,8 +638,7 @@ def test_resolve_sha_delta_scope_keeps_full_set_when_intersection_empty(
     monkeypatch.setattr(
         "cli.core.sha_delta.DefaultGitDeltaProbe.diff_text",
         lambda self, revision_range: (
-            "diff --git a/extra/unrelated.py b/extra/unrelated.py\n"
-            "@@ -1 +1 @@\n-old\n+new\n"
+            "diff --git a/extra/unrelated.py b/extra/unrelated.py\n@@ -1 +1 @@\n-old\n+new\n"
         ),
     )
     monkeypatch.setattr(
@@ -764,6 +759,7 @@ def test_process_review_passes_scoped_files_to_compose_prompt(
     assert captured["filenames"] == ["src/bar.py"]
     # The model run should have observed the <sha_delta_scope> block.
     assert "<sha_delta_scope>" in codex_client.calls[0]["prompt"]
-    assert "<previous_reviewed_head_sha>prev-sha</previous_reviewed_head_sha>" in (
-        codex_client.calls[0]["prompt"]
+    assert (
+        "<previous_reviewed_head_sha>prev-sha</previous_reviewed_head_sha>"
+        in (codex_client.calls[0]["prompt"])
     )

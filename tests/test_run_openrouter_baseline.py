@@ -22,7 +22,6 @@ if str(ROOT) not in sys.path:
 
 from eval import run_openrouter_baseline as runner  # noqa: E402
 
-
 SAMPLE_DOC = {
     "prs": [
         {
@@ -235,9 +234,7 @@ def test_extract_review_run_result_skips_unrelated_braces():
 
 def test_extract_review_run_result_raises_when_no_envelope():
     with pytest.raises(RuntimeError):
-        runner._extract_review_run_result(
-            'no review here\n{"unrelated": "data"}\n'
-        )
+        runner._extract_review_run_result('no review here\n{"unrelated": "data"}\n')
 
 
 # ---------------------------------------------------------------------------
@@ -348,9 +345,7 @@ def test_capture_one_live_path_records_failure(isolated_runs, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_review_model_returns_defaults_when_loader_unavailable(
-    monkeypatch, tmp_path
-):
+def test_resolve_review_model_returns_defaults_when_loader_unavailable(monkeypatch, tmp_path):
     # Point repo_root at an empty dir so load_model_config has nothing
     # to read; resolver MUST fall back to the seed.yaml-pinned defaults.
     rm, re_, ws = runner.resolve_review_model(tmp_path)

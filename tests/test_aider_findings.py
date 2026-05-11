@@ -44,13 +44,7 @@ def _finding(
 
 
 def test_extract_suggestion_blocks_returns_inner_payload() -> None:
-    body = (
-        "Use the indexed form.\n"
-        "```suggestion\n"
-        "for i, x in enumerate(items):\n"
-        "    pass\n"
-        "```\n"
-    )
+    body = "Use the indexed form.\n```suggestion\nfor i, x in enumerate(items):\n    pass\n```\n"
     blocks = extract_suggestion_blocks(body)
     assert len(blocks) == 1
     assert "enumerate(items)" in blocks[0]
@@ -204,9 +198,7 @@ def test_build_aider_message_has_overview_and_findings_sections() -> None:
 
 
 def test_build_aider_message_includes_extra_instructions() -> None:
-    msg = build_aider_message(
-        [_finding()], extra_instructions="Prefer comprehensions."
-    )
+    msg = build_aider_message([_finding()], extra_instructions="Prefer comprehensions.")
     assert "<extra_instructions>" in msg
     assert "Prefer comprehensions." in msg
 
@@ -287,16 +279,7 @@ def test_build_aider_edit_plan_dedupes_files_when_findings_repeat_path() -> None
 
 def test_build_aider_edit_plan_collects_multiple_suggestions_per_finding() -> None:
     finding = _finding(
-        body=(
-            "Option A:\n"
-            "```suggestion\n"
-            "a = 1\n"
-            "```\n"
-            "Option B:\n"
-            "```suggestion\n"
-            "b = 2\n"
-            "```\n"
-        ),
+        body=("Option A:\n```suggestion\na = 1\n```\nOption B:\n```suggestion\nb = 2\n```\n"),
     )
     plan = build_aider_edit_plan([finding])
     assert len(plan.suggestions) == 2

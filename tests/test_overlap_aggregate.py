@@ -31,7 +31,6 @@ import pytest
 from eval import compare_findings as cf
 from eval import overlap_aggregate as oa
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
@@ -130,9 +129,7 @@ def _write_registry(path: Path, runs_ids: list[str]) -> None:
 
 
 @pytest.fixture
-def staged(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> tuple[Path, Path, Path, Path]:
+def staged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path, Path]:
     baseline = tmp_path / "baseline"
     candidate = tmp_path / "candidate"
     registry = tmp_path / "sample-prs.yaml"
@@ -161,7 +158,7 @@ def test_read_sample_registry_extracts_ids(tmp_path: Path) -> None:
         "  - id: dotcms-core-1\n"
         "    repo: x\n"
         "  - id: 'dotcms-core-2'\n"
-        "  - id: \"dotcms-core-3\"\n",
+        '  - id: "dotcms-core-3"\n',
         encoding="utf-8",
     )
     assert oa._read_sample_registry(p) == [
@@ -176,10 +173,7 @@ def test_read_sample_registry_dedupes_and_skips_non_dotcms(
 ) -> None:
     p = tmp_path / "registry.yaml"
     p.write_text(
-        "prs:\n"
-        "  - id: dotcms-core-1\n"
-        "  - id: dotcms-core-1\n"
-        "  - id: other-repo-99\n",
+        "prs:\n  - id: dotcms-core-1\n  - id: dotcms-core-1\n  - id: other-repo-99\n",
         encoding="utf-8",
     )
     assert oa._read_sample_registry(p) == ["dotcms-core-1"]
@@ -207,27 +201,28 @@ def test_ready_pr_emits_micro_macro_and_per_category(
     _write_json(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha,
+            pr_id=pr,
+            head_sha=sha,
             findings=[
-                _finding(path="foo.py", start=10, priority=1,
-                         title="🔴 [P1] foo.py:10 a"),
-                _finding(path="bar.py", start=20, priority=0,
-                         title="🔴 [P0] bar.py:20 b"),
+                _finding(path="foo.py", start=10, priority=1, title="🔴 [P1] foo.py:10 a"),
+                _finding(path="bar.py", start=20, priority=0, title="🔴 [P0] bar.py:20 b"),
             ],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha,
+            pr_id=pr,
+            head_sha=sha,
             findings=[
-                _finding(path="foo.py", start=10, priority=1,
-                         title="🔴 [P1] foo.py:10 a"),
-                _finding(path="other.py", start=99, priority=3,
-                         title="🟡 [P3] other.py:99 c"),
+                _finding(path="foo.py", start=10, priority=1, title="🔴 [P1] foo.py:10 a"),
+                _finding(path="other.py", start=99, priority=3, title="🟡 [P3] other.py:99 c"),
             ],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -295,19 +290,22 @@ def test_pending_prs_excluded_from_micro_and_per_category(
     _write_json(
         baseline / pr_ready / "codex-findings.json",
         _wrapper(
-            pr_id=pr_ready, head_sha=sha,
-            findings=[_finding(path="x.py", start=5, priority=2,
-                               title="🟠 [P2] x.py:5 a")],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr_ready,
+            head_sha=sha,
+            findings=[_finding(path="x.py", start=5, priority=2, title="🟠 [P2] x.py:5 a")],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr_ready / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr_ready, head_sha=sha,
-            findings=[_finding(path="x.py", start=5, priority=2,
-                               title="🟠 [P2] x.py:5 a")],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr_ready,
+            head_sha=sha,
+            findings=[_finding(path="x.py", start=5, priority=2, title="🟠 [P2] x.py:5 a")],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -315,23 +313,28 @@ def test_pending_prs_excluded_from_micro_and_per_category(
     _write_json(
         baseline / pr_pending / "codex-findings.json",
         _wrapper(
-            pr_id=pr_pending, head_sha=sha,
-            findings=[_finding(path="loud.py", start=1, priority=0,
-                               title="🔴 [P0] loud.py:1 boom")],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr_pending,
+            head_sha=sha,
+            findings=[
+                _finding(path="loud.py", start=1, priority=0, title="🔴 [P0] loud.py:1 boom")
+            ],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr_pending / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr_pending, head_sha=sha, findings=None,
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr_pending,
+            head_sha=sha,
+            findings=None,
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="unfilled",
         ),
     )
-    record = json.loads(
-        oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text()
-    )
+    record = json.loads(oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text())
     assert record["sample_size"] == 2
     assert record["ready_count"] == 1
     assert record["status_counts"]["ready"] == 1
@@ -362,21 +365,26 @@ def test_zero_ready_prs_yields_null_metrics(
     _write_json(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=None,
-            run="codex", model="gpt-5.4", capture_status="pending",
+            pr_id=pr,
+            head_sha=sha,
+            findings=None,
+            run="codex",
+            model="gpt-5.4",
+            capture_status="pending",
         ),
     )
     _write_json(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=None,
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=None,
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="unfilled",
         ),
     )
-    record = json.loads(
-        oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text()
-    )
+    record = json.loads(oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text())
     assert record["ready_count"] == 0
     assert record["metrics"]["micro"]["precision"] is None
     assert record["metrics"]["micro"]["recall"] is None
@@ -401,21 +409,26 @@ def test_head_sha_drift_does_not_contaminate_micro(
     _write_json(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="aa" * 20, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha="aa" * 20,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="bb" * 20, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha="bb" * 20,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
-    record = json.loads(
-        oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text()
-    )
+    record = json.loads(oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text())
     assert record["status_counts"] == {"head_sha_drift": 1}
     assert record["ready_count"] == 0
     assert record["metrics"]["micro"]["true_positive"] == 0
@@ -437,15 +450,22 @@ def test_check_aggregate_clean_after_write(
     _write_json(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -473,15 +493,22 @@ def test_check_aggregate_flags_mutation(
     _write_json(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -509,21 +536,26 @@ def test_discovery_fallback_when_registry_missing(
     _write_json(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write_json(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
-    record = json.loads(
-        oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text()
-    )
+    record = json.loads(oa.write_aggregate(generated_at="2026-05-07T00:00:00Z").read_text())
     assert record["target_source"] == "fixture_discovery"
     assert record["sample_size"] == 1
     assert record["prs"][0]["pr_id"] == "dotcms-core-9"

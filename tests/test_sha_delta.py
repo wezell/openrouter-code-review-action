@@ -123,9 +123,7 @@ def _resolver(
 ) -> ShaDeltaResolver:
     manager = ReviewStateManager.from_base_dir(tmp_path)
     debug_cb = (
-        (lambda level, message: debug.append((level, message)))
-        if debug is not None
-        else None
+        (lambda level, message: debug.append((level, message))) if debug is not None else None
     )
     return ShaDeltaResolver(
         manager,
@@ -608,9 +606,7 @@ def test_three_run_incremental_flow_with_workflow_rekey(tmp_path: Path) -> None:
     run2_decision = resolver.resolve(_key("sha2"), previous_head_sha="sha1")
     assert run2_decision.decision == SHA_DELTA_DECISION_INCREMENTAL
     rekeyed = manager.migrate_to_sha(run2_decision.prior_state, "sha2")
-    accumulated = rekeyed.with_findings(
-        (*rekeyed.findings, _finding(line=20, title="B"))
-    )
+    accumulated = rekeyed.with_findings((*rekeyed.findings, _finding(line=20, title="B")))
     manager.record_state(accumulated)
 
     # ---- Run 3: incremental sha2 → sha3.

@@ -206,10 +206,7 @@ def write_artifact(
                 if capture_status == "captured"
                 else None
             ),
-            "command": (
-                "python -m eval.run_codex_baseline "
-                f"--pr-id {pr.id}"
-            ),
+            "command": (f"python -m eval.run_codex_baseline --pr-id {pr.id}"),
             "notes": notes,
         },
         "review_run_result": review_run_result,
@@ -224,9 +221,7 @@ def write_artifact(
             },
         },
     }
-    _atomic_write(
-        codex_artifact_path(pr), json.dumps(artifact, indent=2, sort_keys=True) + "\n"
-    )
+    _atomic_write(codex_artifact_path(pr), json.dumps(artifact, indent=2, sort_keys=True) + "\n")
 
     meta = {
         "pr_id": pr.id,
@@ -290,9 +285,7 @@ def _checkout_pr(pr: SamplePR, dest: Path) -> None:
     )
     if fetch.returncode != 0:
         # Fallback: full fetch if the server doesn't allow single-SHA fetch.
-        subprocess.run(
-            ["git", "-C", str(dest), "fetch", "origin"], check=True, capture_output=True
-        )
+        subprocess.run(["git", "-C", str(dest), "fetch", "origin"], check=True, capture_output=True)
     subprocess.run(
         ["git", "-C", str(dest), "checkout", "--detach", pr.head_sha],
         check=True,
@@ -344,8 +337,7 @@ def _invoke_codex_cli(pr: SamplePR, repo_path: Path) -> dict[str, Any]:
     )
     if proc.returncode != 0:
         raise RuntimeError(
-            "codex CLI dry-run failed "
-            f"(rc={proc.returncode}); stderr={proc.stderr[-2000:]!r}"
+            f"codex CLI dry-run failed (rc={proc.returncode}); stderr={proc.stderr[-2000:]!r}"
         )
     return _extract_review_run_result(proc.stdout)
 
@@ -377,9 +369,7 @@ def _extract_review_run_result(stdout: str) -> dict[str, Any]:
         ):
             return obj
         idx = end
-    raise RuntimeError(
-        "could not locate a ReviewRunResult JSON envelope in CLI stdout"
-    )
+    raise RuntimeError("could not locate a ReviewRunResult JSON envelope in CLI stdout")
 
 
 def capture_one(pr: SamplePR, *, dry_run_only: bool, force: bool) -> str:
@@ -415,9 +405,7 @@ def capture_one(pr: SamplePR, *, dry_run_only: bool, force: bool) -> str:
             posted=None,
             notes=f"Live capture skipped: {why}",
         )
-        print(
-            f"[pending] {pr.id}: {why}; placeholder written", file=sys.stderr
-        )
+        print(f"[pending] {pr.id}: {why}; placeholder written", file=sys.stderr)
         return "pending"
 
     workdir = Path(os.environ.get("RUNNER_TEMP") or tempfile.gettempdir())
@@ -461,8 +449,7 @@ def _select(prs: Iterable[SamplePR], pr_ids: Sequence[str] | None) -> list[Sampl
     missing = [pid for pid in pr_ids if pid not in by_id]
     if missing:
         raise SystemExit(
-            f"unknown pr_id(s): {', '.join(missing)}. "
-            f"Known: {', '.join(sorted(by_id))}"
+            f"unknown pr_id(s): {', '.join(missing)}. Known: {', '.join(sorted(by_id))}"
         )
     return [by_id[pid] for pid in pr_ids]
 
@@ -473,9 +460,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         description="Capture the Codex baseline for the bake-off sample PRs.",
     )
     sel = parser.add_mutually_exclusive_group(required=True)
-    sel.add_argument(
-        "--all", action="store_true", help="Capture every PR in the sample registry."
-    )
+    sel.add_argument("--all", action="store_true", help="Capture every PR in the sample registry.")
     sel.add_argument(
         "--pr-id",
         action="append",

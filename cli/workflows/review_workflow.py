@@ -113,7 +113,7 @@ def _extract_paths_from_unified_diff(diff_text: str) -> frozenset[str]:
 
 def _utc_now_iso8601() -> str:
     """Return the current UTC time as an ISO-8601 string (``Z``-suffixed)."""
-    return _dt.datetime.now(tz=_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return _dt.datetime.now(tz=_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _severity_from_priority(priority: int | None) -> str:
@@ -511,9 +511,7 @@ class ReviewWorkflow:
         if sha_delta_result.is_incremental:
             delta_paths = self._compute_sha_delta_paths(sha_delta_result)
             if delta_paths:
-                filtered = [
-                    file for file in changed_files if file.filename in delta_paths
-                ]
+                filtered = [file for file in changed_files if file.filename in delta_paths]
                 if filtered:
                     scoped_files = filtered
                     scoped_paths = tuple(file.filename for file in filtered if file.filename)
@@ -539,8 +537,7 @@ class ReviewWorkflow:
             else:
                 self._debug(
                     1,
-                    "SHA-delta range produced no extractable file paths; "
-                    "keeping full PR file set",
+                    "SHA-delta range produced no extractable file paths; keeping full PR file set",
                 )
 
         return _ShaDeltaScope(
@@ -569,7 +566,7 @@ class ReviewWorkflow:
             return frozenset()
         revision_range = f"{previous_sha}..{result.current_head_sha}"
         try:
-            paths = git_diff_name_only(revision_range)
+            diff_paths = git_diff_name_only(revision_range)
         except subprocess.CalledProcessError as exc:
             self._debug(
                 1,
@@ -577,7 +574,7 @@ class ReviewWorkflow:
                 "falling back to full PR file set",
             )
             return frozenset()
-        return frozenset(paths)
+        return frozenset(diff_paths)
 
     def _build_sha_delta_block(self, scope: _ShaDeltaScope | None) -> str:
         """Render the SHA-delta scope block embedded in the review prompt.
@@ -939,13 +936,9 @@ class ReviewWorkflow:
 
         prior_state = lookup.state
         merged_findings = self._build_persisted_findings(review, repo_root)
-        merged_carried_forward = self._merge_carried_forward_ids(
-            prior_state, posting_outcome
-        )
+        merged_carried_forward = self._merge_carried_forward_ids(prior_state, posting_outcome)
         effective_summary_id = (
-            summary_comment_id
-            if summary_comment_id is not None
-            else prior_state.summary_comment_id
+            summary_comment_id if summary_comment_id is not None else prior_state.summary_comment_id
         )
         merged_notes = self._extend_notes(prior_state, posting_outcome)
 
@@ -1007,14 +1000,11 @@ class ReviewWorkflow:
         for finding in review.findings:
             location = finding.code_location
             try:
-                relative_path = self._render_relative_path(
-                    location.absolute_file_path, repo_root
-                )
+                relative_path = self._render_relative_path(location.absolute_file_path, repo_root)
             except ValueError as exc:
                 self._debug(
                     2,
-                    "Skipping finding for persistence "
-                    f"({location.absolute_file_path}): {exc}",
+                    f"Skipping finding for persistence ({location.absolute_file_path}): {exc}",
                 )
                 continue
             if location.start_line <= 0 or location.end_line < location.start_line:
@@ -1042,8 +1032,7 @@ class ReviewWorkflow:
             except ReviewContractError as exc:
                 self._debug(
                     2,
-                    "Skipping finding for persistence "
-                    f"({relative_path}): contract error {exc}",
+                    f"Skipping finding for persistence ({relative_path}): contract error {exc}",
                 )
                 continue
         return rendered
@@ -1061,9 +1050,7 @@ class ReviewWorkflow:
         try:
             relative = candidate.resolve().relative_to(repo_root.resolve())
         except (OSError, ValueError) as exc:
-            raise ValueError(
-                f"path {absolute_path!r} not under repo_root {repo_root}"
-            ) from exc
+            raise ValueError(f"path {absolute_path!r} not under repo_root {repo_root}") from exc
         return relative.as_posix()
 
     def _merge_carried_forward_ids(
@@ -1134,9 +1121,7 @@ class ReviewWorkflow:
         )
         return tuple(prior_state.notes) + (stamp,)
 
-    def _publish_summary(
-        self, pr: PullRequestLikeProtocol, summary: str
-    ) -> int | None:
+    def _publish_summary(self, pr: PullRequestLikeProtocol, summary: str) -> int | None:
         """Publish (or refresh) the review summary issue comment.
 
         Returns the new comment's ``id`` when the post succeeded so
@@ -1204,9 +1189,7 @@ class ReviewWorkflow:
             previous_head_sha=self._previous_head_sha_hint(snapshots.issue_comments),
         )
         scoped_changed_files = (
-            sha_delta_scope.scoped_changed_files
-            if sha_delta_scope is not None
-            else changed_files
+            sha_delta_scope.scoped_changed_files if sha_delta_scope is not None else changed_files
         )
         sha_delta_block = "" if resume_block else self._build_sha_delta_block(sha_delta_scope)
 

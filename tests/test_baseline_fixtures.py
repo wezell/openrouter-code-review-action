@@ -79,9 +79,7 @@ def test_fixture_dir_present(pr_number: int) -> None:
 def test_metadata_carries_required_fields(pr_number: int) -> None:
     """Sub-AC 1.2 requires PR number, base/head SHAs, changed files."""
     pr_id = f"pr-{pr_number}"
-    meta = json.loads(
-        (FIXTURES_DIR / pr_id / "metadata.json").read_text(encoding="utf-8")
-    )
+    meta = json.loads((FIXTURES_DIR / pr_id / "metadata.json").read_text(encoding="utf-8"))
     assert meta["number"] == pr_number
     # Base and head SHAs from the PR branch tips.
     assert isinstance(meta["baseRefOid"], str) and len(meta["baseRefOid"]) == 40
@@ -103,9 +101,7 @@ def test_merge_commit_matches_sample(sample_prs: list[dict]) -> None:
     regen, not at review time."""
     for pr in sample_prs:
         pr_id = f"pr-{pr['number']}"
-        meta = json.loads(
-            (FIXTURES_DIR / pr_id / "metadata.json").read_text(encoding="utf-8")
-        )
+        meta = json.loads((FIXTURES_DIR / pr_id / "metadata.json").read_text(encoding="utf-8"))
         assert meta["mergeCommit"]["oid"] == pr["merge_commit"], (
             f"{pr_id}: sample-prs.yml merge_commit drifted from on-disk metadata"
         )

@@ -154,11 +154,7 @@ def build_aider_command(
         env var, then to ``aider``.
     """
 
-    binary = (
-        aider_binary
-        or os.environ.get("AIDER_BINARY", "").strip()
-        or DEFAULT_AIDER_BINARY
-    )
+    binary = aider_binary or os.environ.get("AIDER_BINARY", "").strip() or DEFAULT_AIDER_BINARY
 
     argv: list[str] = [
         binary,

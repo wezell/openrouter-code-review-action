@@ -232,9 +232,7 @@ def test_run_raises_on_missing_aider_binary(
         )
 
 
-def test_run_raises_on_nonzero_exit_when_check_true(
-    repo_dir: Path, fake_aider: Path
-) -> None:
+def test_run_raises_on_nonzero_exit_when_check_true(repo_dir: Path, fake_aider: Path) -> None:
     runner = _FakeRunner(returncode=2, stdout="boom", stderr="ouch")
     client = AiderClient(runner=runner)
     with pytest.raises(AiderExecutionError) as info:
@@ -248,9 +246,7 @@ def test_run_raises_on_nonzero_exit_when_check_true(
     assert info.value.stderr == "ouch"
 
 
-def test_run_returns_failure_when_check_false(
-    repo_dir: Path, fake_aider: Path
-) -> None:
+def test_run_returns_failure_when_check_false(repo_dir: Path, fake_aider: Path) -> None:
     runner = _FakeRunner(returncode=3, stdout="", stderr="bad")
     client = AiderClient(runner=runner)
     result = client.run(
@@ -276,9 +272,7 @@ def test_run_translates_timeout(repo_dir: Path, fake_aider: Path) -> None:
         )
 
 
-def test_run_sets_openrouter_env_for_subprocess(
-    repo_dir: Path, fake_aider: Path
-) -> None:
+def test_run_sets_openrouter_env_for_subprocess(repo_dir: Path, fake_aider: Path) -> None:
     runner = _FakeRunner(returncode=0)
     client = AiderClient(api_key="sk-or-y", runner=runner)
     client.run(
@@ -292,9 +286,7 @@ def test_run_sets_openrouter_env_for_subprocess(
     assert env["OPENROUTER_API_KEY"] == "sk-or-y"
 
 
-def test_run_does_not_clobber_existing_api_key_in_env(
-    repo_dir: Path, fake_aider: Path
-) -> None:
+def test_run_does_not_clobber_existing_api_key_in_env(repo_dir: Path, fake_aider: Path) -> None:
     runner = _FakeRunner(returncode=0)
     client = AiderClient(api_key="sk-or-from-config", runner=runner)
     client.run(
@@ -311,9 +303,7 @@ def test_run_does_not_clobber_existing_api_key_in_env(
     assert env["OPENROUTER_API_KEY"] == "sk-or-existing"
 
 
-def test_build_command_via_client_returns_dry_run_argv(
-    repo_dir: Path, fake_aider: Path
-) -> None:
+def test_build_command_via_client_returns_dry_run_argv(repo_dir: Path, fake_aider: Path) -> None:
     client = AiderClient(api_key="sk-or-z")
     argv = client.build_command(
         model="anthropic/claude-opus-4.7",

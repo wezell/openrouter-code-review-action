@@ -43,11 +43,11 @@ methodology explicitly forbids.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-import json
 
 import yaml
 
@@ -89,9 +89,7 @@ REQUIRED_METADATA_KEYS: frozenset[str] = frozenset(
 # Required fields on each captured Codex finding (the matcher reads
 # ``code_location`` + ``title``/``body``/``priority`` directly, see
 # ``eval/score_codex_baseline.py::_normalize_finding``).
-REQUIRED_FINDING_KEYS: frozenset[str] = frozenset(
-    {"title", "body", "priority", "code_location"}
-)
+REQUIRED_FINDING_KEYS: frozenset[str] = frozenset({"title", "body", "priority", "code_location"})
 
 
 class BaselineFixtureError(AssertionError):
@@ -128,12 +126,10 @@ class BaselineFixture:
     @property
     def has_findings(self) -> bool:
         """True when the fixture carries scorable Codex findings."""
-        return self.capture_status in SCORABLE_CAPTURE_STATES and bool(
-            self.codex_findings
-        )
+        return self.capture_status in SCORABLE_CAPTURE_STATES and bool(self.codex_findings)
 
 
-def _fail(pr_id: str, message: str) -> "BaselineFixtureError":
+def _fail(pr_id: str, message: str) -> BaselineFixtureError:
     return BaselineFixtureError(f"{pr_id}: {message}")
 
 
@@ -254,8 +250,7 @@ def _validate_finding(pr_id: str, idx: int, finding: Any) -> None:
     if not isinstance(code_location.get("absolute_file_path"), str):
         raise _fail(
             pr_id,
-            f"review_run_result.findings[{idx}].code_location.absolute_file_path "
-            "must be a string",
+            f"review_run_result.findings[{idx}].code_location.absolute_file_path must be a string",
         )
 
 
@@ -394,9 +389,7 @@ def list_fixture_pr_ids(
     out: list[str] = []
     for entry in prs:
         if not isinstance(entry, Mapping) or "number" not in entry:
-            raise BaselineFixtureError(
-                f"{path}: each prs[] entry must be a mapping with 'number'"
-            )
+            raise BaselineFixtureError(f"{path}: each prs[] entry must be a mapping with 'number'")
         out.append(f"pr-{int(entry['number'])}")
     return out
 
@@ -427,9 +420,7 @@ def load_all_baseline_fixtures(
     errors: list[str] = []
     for pr_id in list_fixture_pr_ids(sample_path=sample_path):
         try:
-            fixtures.append(
-                load_baseline_fixture(pr_id, fixtures_dir=fixtures_dir)
-            )
+            fixtures.append(load_baseline_fixture(pr_id, fixtures_dir=fixtures_dir))
         except BaselineFixtureError as exc:
             errors.append(str(exc))
     if errors:

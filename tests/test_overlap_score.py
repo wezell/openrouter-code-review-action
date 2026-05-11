@@ -247,13 +247,9 @@ class TestDeterminism:
         # Match content is identical (closest pair claimed first), but
         # the side-only ordering follows the *input* order, so we
         # compare the match content explicitly.
-        ids_forward = sorted(
-            (m.codex.finding_id, m.openrouter.finding_id)
-            for m in forward.matches
-        )
+        ids_forward = sorted((m.codex.finding_id, m.openrouter.finding_id) for m in forward.matches)
         ids_reversed = sorted(
-            (m.codex.finding_id, m.openrouter.finding_id)
-            for m in reversed_.matches
+            (m.codex.finding_id, m.openrouter.finding_id) for m in reversed_.matches
         )
         assert ids_forward == ids_reversed
 
@@ -392,8 +388,9 @@ class TestSpecWorkedExample:
         ]
         result = match_findings(codex, openrouter)
 
-        assert [(m.codex.finding_id, m.openrouter.finding_id, m.line_distance)
-                for m in result.matches] == [
+        assert [
+            (m.codex.finding_id, m.openrouter.finding_id, m.line_distance) for m in result.matches
+        ] == [
             ("c.f0001", "or.f0001", 0),
             ("c.f0002", "or.f0002", 0),
         ]

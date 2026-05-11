@@ -15,15 +15,15 @@ Sub-AC 7.2.3 — verifies that:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import pytest
 
 from cli.clients.aider_client import (
+    DEFAULT_OPENROUTER_API_BASE,
     AiderClient,
     AiderExecutionError,
     AiderResult,
-    DEFAULT_OPENROUTER_API_BASE,
 )
 from cli.core.config import ReviewConfig
 from cli.core.exceptions import ConfigurationError
@@ -106,36 +106,28 @@ def test_constructor_uses_aider_client_with_config_secrets(tmp_path: Path) -> No
 
 def test_execute_rejects_review_mode(tmp_path: Path) -> None:
     cfg = _make_config(tmp_path, mode="review")
-    runner = ActModeRunner(
-        cfg, aider_client=_FakeAiderClient(result=_make_aider_result())
-    )
+    runner = ActModeRunner(cfg, aider_client=_FakeAiderClient(result=_make_aider_result()))
     with pytest.raises(ConfigurationError, match="expected 'act'"):
         runner.execute("do stuff")
 
 
 def test_execute_requires_non_empty_prompt(tmp_path: Path) -> None:
     cfg = _make_config(tmp_path)
-    runner = ActModeRunner(
-        cfg, aider_client=_FakeAiderClient(result=_make_aider_result())
-    )
+    runner = ActModeRunner(cfg, aider_client=_FakeAiderClient(result=_make_aider_result()))
     with pytest.raises(ConfigurationError, match="prompt is empty"):
         runner.execute("   ")
 
 
 def test_execute_requires_act_model(tmp_path: Path) -> None:
     cfg = _make_config(tmp_path, act_model="")
-    runner = ActModeRunner(
-        cfg, aider_client=_FakeAiderClient(result=_make_aider_result())
-    )
+    runner = ActModeRunner(cfg, aider_client=_FakeAiderClient(result=_make_aider_result()))
     with pytest.raises(ConfigurationError, match="Act model is empty"):
         runner.execute("fix things")
 
 
 def test_execute_requires_openrouter_api_key(tmp_path: Path) -> None:
     cfg = _make_config(tmp_path, openrouter_api_key="")
-    runner = ActModeRunner(
-        cfg, aider_client=_FakeAiderClient(result=_make_aider_result())
-    )
+    runner = ActModeRunner(cfg, aider_client=_FakeAiderClient(result=_make_aider_result()))
     with pytest.raises(ConfigurationError, match="OPENROUTER_API_KEY"):
         runner.execute("fix things")
 
@@ -241,9 +233,7 @@ def test_execute_translates_failure_into_result(tmp_path: Path) -> None:
 
 def test_execute_handles_no_applied_edits(tmp_path: Path) -> None:
     cfg = _make_config(tmp_path)
-    fake = _FakeAiderClient(
-        result=_make_aider_result(stdout="No edits suggested.", cwd=tmp_path)
-    )
+    fake = _FakeAiderClient(result=_make_aider_result(stdout="No edits suggested.", cwd=tmp_path))
     runner = ActModeRunner(cfg, aider_client=fake)
     result = runner.execute("fix")
     assert result.applied_files == ()
@@ -257,10 +247,7 @@ def test_execute_handles_no_applied_edits(tmp_path: Path) -> None:
 
 def test_extract_applied_files_dedupes_in_order() -> None:
     text = (
-        "Applied edit to a.py\n"
-        "Applied edit to b.py\n"
-        "Applied edit to a.py\n"
-        "Applied edit to c.py\n"
+        "Applied edit to a.py\nApplied edit to b.py\nApplied edit to a.py\nApplied edit to c.py\n"
     )
     assert _extract_applied_files(text) == ["a.py", "b.py", "c.py"]
 

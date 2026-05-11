@@ -267,9 +267,7 @@ def test_apply_web_search_mode_live_appends_online_suffix() -> None:
         apply_web_search_mode("anthropic/claude-opus-4.7", "live")
         == f"anthropic/claude-opus-4.7{ONLINE_SUFFIX}"
     )
-    assert (
-        apply_web_search_mode("openai/gpt-5.4", "live") == f"openai/gpt-5.4{ONLINE_SUFFIX}"
-    )
+    assert apply_web_search_mode("openai/gpt-5.4", "live") == f"openai/gpt-5.4{ONLINE_SUFFIX}"
 
 
 def test_apply_web_search_mode_live_is_idempotent() -> None:
@@ -329,9 +327,7 @@ def test_review_config_routes_live_through_apply_web_search_mode(base_env: Path)
 
     _write_config(
         base_env,
-        "review:\n"
-        "  model: anthropic/claude-opus-4.7\n"
-        "  web_search_mode: live\n",
+        "review:\n  model: anthropic/claude-opus-4.7\n  web_search_mode: live\n",
     )
     config = ReviewConfig.from_args(pr_number=1, mode="review")
 
@@ -343,14 +339,10 @@ def test_review_config_routes_live_through_apply_web_search_mode(base_env: Path)
 
 
 @pytest.mark.parametrize("mode", ["disabled", "cached"])
-def test_review_config_disabled_and_cached_skip_online_suffix(
-    base_env: Path, mode: str
-) -> None:
+def test_review_config_disabled_and_cached_skip_online_suffix(base_env: Path, mode: str) -> None:
     _write_config(
         base_env,
-        f"review:\n"
-        f"  model: anthropic/claude-opus-4.7\n"
-        f"  web_search_mode: {mode}\n",
+        f"review:\n  model: anthropic/claude-opus-4.7\n  web_search_mode: {mode}\n",
     )
     config = ReviewConfig.from_args(pr_number=1, mode="review")
 

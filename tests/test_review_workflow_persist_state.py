@@ -48,10 +48,10 @@ import pytest
 from cli.core.config import ReviewConfig
 from cli.core.models import ReviewThreadComment, ReviewThreadSnapshot
 from cli.core.review_state import (
+    SEVERITY_CRITICAL,
     PersistedReviewFinding,
     PriorReviewKey,
     PriorReviewState,
-    SEVERITY_CRITICAL,
 )
 from cli.core.review_state_manager import ReviewStateManager
 from cli.workflows.review_workflow import ReviewWorkflow
@@ -195,9 +195,7 @@ class _FakePRWithIds:
             )
             for index, comment in enumerate(self._review_comments, start=1)
         ]
-        self._issue = _FakeIssueWithIds(
-            next_id=next_summary_id, return_obj=summary_returns_obj
-        )
+        self._issue = _FakeIssueWithIds(next_id=next_summary_id, return_obj=summary_returns_obj)
         self._changed_files = changed_files or [_FakeChangedFile("src.py")]
 
     def get_files(self) -> list[_FakeChangedFile]:
@@ -229,9 +227,7 @@ class _FakeGitHubClient:
     def post_inline_comment(self, pr: _FakePRWithIds, payload: Any, *, head_sha: str) -> None:
         pass
 
-    def post_pull_request_review(
-        self, pr: _FakePRWithIds, payloads: Any, *, head_sha: str
-    ) -> None:
+    def post_pull_request_review(self, pr: _FakePRWithIds, payloads: Any, *, head_sha: str) -> None:
         pass
 
     def post_issue_comment(self, pr: _FakePRWithIds, text: str) -> None:
@@ -309,9 +305,7 @@ def _finding_payload(
     }
 
 
-def _load_persisted(
-    runner_temp: Path, key: PriorReviewKey
-) -> PriorReviewState | None:
+def _load_persisted(runner_temp: Path, key: PriorReviewKey) -> PriorReviewState | None:
     manager = ReviewStateManager.from_runner_temp(str(runner_temp))
     return manager.store.load(key)
 
@@ -500,9 +494,7 @@ def test_second_run_merges_prior_findings_into_carried_forward(
 # ---------------------------------------------------------------------------
 
 
-def test_dry_run_skips_state_persistence(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_dry_run_skips_state_persistence(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     runner_temp = tmp_path / "runner-temp"
     runner_temp.mkdir()
     monkeypatch.setenv("RUNNER_TEMP", str(runner_temp))
@@ -592,9 +584,7 @@ def test_prior_summary_id_survives_when_current_create_returns_no_id(
         codex_client=cast(
             Any,
             _FakeCodexClient(
-                _codex_response(
-                    findings=[_finding_payload(sample_file=sample_file, line=2)]
-                )
+                _codex_response(findings=[_finding_payload(sample_file=sample_file, line=2)])
             ),
         ),
     )
@@ -712,9 +702,7 @@ def test_persistence_failure_does_not_unwind_run(
         codex_client=cast(
             Any,
             _FakeCodexClient(
-                _codex_response(
-                    findings=[_finding_payload(sample_file=sample_file, line=2)]
-                )
+                _codex_response(findings=[_finding_payload(sample_file=sample_file, line=2)])
             ),
         ),
     )

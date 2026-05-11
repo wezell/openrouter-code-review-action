@@ -194,11 +194,7 @@ def _severity_match(c: OverlapFinding, o: OverlapFinding) -> bool:
     matches ``compare_findings._match_payload`` so callers reading the
     annotation get identical semantics.
     """
-    return (
-        c.severity is not None
-        and o.severity is not None
-        and c.severity == o.severity
-    )
+    return c.severity is not None and o.severity is not None and c.severity == o.severity
 
 
 # ---------------------------------------------------------------------------
@@ -361,10 +357,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--tolerance",
         type=int,
         default=LINE_PROXIMITY_TOLERANCE,
-        help=(
-            f"± lines tolerance for proximity matching "
-            f"(default: {LINE_PROXIMITY_TOLERANCE})."
-        ),
+        help=(f"± lines tolerance for proximity matching (default: {LINE_PROXIMITY_TOLERANCE})."),
     )
     parser.add_argument(
         "--skip-aggregate",
@@ -398,13 +391,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.check:
         all_drift: list[str] = []
         if targets:
-            all_drift.extend(
-                overlap_metrics.check_overlap(targets, tolerance=args.tolerance)
-            )
+            all_drift.extend(overlap_metrics.check_overlap(targets, tolerance=args.tolerance))
         if not args.skip_aggregate:
-            all_drift.extend(
-                overlap_aggregate.check_aggregate(tolerance=args.tolerance)
-            )
+            all_drift.extend(overlap_aggregate.check_aggregate(tolerance=args.tolerance))
         if all_drift:
             sys.stderr.write(
                 "overlap pipeline drifted from rebuild:\n  - "
@@ -419,8 +408,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if not targets:
         sys.stderr.write(
-            "[ok] no eval/runs/<pr_id>/ directories found; "
-            "nothing to do for per-PR layer\n"
+            "[ok] no eval/runs/<pr_id>/ directories found; nothing to do for per-PR layer\n"
         )
     written_per_pr: list[str] = []
     for runs_id in targets:
@@ -432,10 +420,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     agg_path = overlap_aggregate.write_aggregate(tolerance=args.tolerance)
-    print(
-        f"wrote {len(written_per_pr)} overlap.json record(s) "
-        f"and aggregate at {agg_path}"
-    )
+    print(f"wrote {len(written_per_pr)} overlap.json record(s) and aggregate at {agg_path}")
     return 0
 
 

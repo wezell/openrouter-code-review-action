@@ -26,7 +26,6 @@ import pytest
 from eval import compare_findings as cf
 from eval import overlap_metrics as om
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
@@ -114,9 +113,7 @@ def _write(path: Path, payload: Mapping[str, Any]) -> None:
 
 
 @pytest.fixture
-def staged(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> tuple[Path, Path, Path]:
+def staged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path, Path]:
     baseline = tmp_path / "baseline"
     candidate = tmp_path / "candidate"
     runs = tmp_path / "runs"
@@ -216,23 +213,28 @@ def test_ready_status_emits_metrics(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha,
+            pr_id=pr,
+            head_sha=sha,
             findings=[
                 _finding(path="foo.py", start=10),
                 _finding(path="bar.py", start=20),
             ],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha,
+            pr_id=pr,
+            head_sha=sha,
             findings=[
                 _finding(path="foo.py", start=10),  # match
                 _finding(path="other.py", start=99),  # FP
             ],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -269,17 +271,22 @@ def test_head_sha_drift_suppresses_metrics(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="aa" * 20,
+            pr_id=pr,
+            head_sha="aa" * 20,
             findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="bb" * 20,  # different SHA
+            pr_id=pr,
+            head_sha="bb" * 20,  # different SHA
             findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -309,15 +316,22 @@ def test_pending_status_metrics_null(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="cc" * 20, findings=None,
-            run="codex", model="gpt-5.4", capture_status="pending",
+            pr_id=pr,
+            head_sha="cc" * 20,
+            findings=None,
+            run="codex",
+            model="gpt-5.4",
+            capture_status="pending",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha="cc" * 20, findings=None,
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha="cc" * 20,
+            findings=None,
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="unfilled",
         ),
     )
@@ -350,15 +364,22 @@ def test_check_overlap_clean_after_write(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -387,15 +408,22 @@ def test_check_overlap_detects_missing_file(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -418,15 +446,22 @@ def test_check_overlap_detects_edit(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -483,15 +518,22 @@ def test_main_writes_for_discovered_targets(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )
@@ -515,15 +557,22 @@ def test_main_check_flags_drift(
     _write(
         baseline / pr / "codex-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="codex", model="gpt-5.4", capture_status="captured",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="codex",
+            model="gpt-5.4",
+            capture_status="captured",
         ),
     )
     _write(
         candidate / pr / "openrouter-findings.json",
         _wrapper(
-            pr_id=pr, head_sha=sha, findings=[_finding()],
-            run="openrouter", model="anthropic/claude-opus-4.7",
+            pr_id=pr,
+            head_sha=sha,
+            findings=[_finding()],
+            run="openrouter",
+            model="anthropic/claude-opus-4.7",
             capture_status="completed",
         ),
     )

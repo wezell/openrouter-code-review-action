@@ -151,9 +151,7 @@ def test_lookup_or_initialize_does_not_write_to_disk_on_initialize(
     # Initialization must not eagerly persist; only record_review_run
     # writes. This keeps a "lookup, decide not to write" path side-effect
     # free so a dry-run can lookup safely.
-    assert list(tmp_path.iterdir()) == [] or all(
-        entry.is_dir() for entry in tmp_path.iterdir()
-    )
+    assert list(tmp_path.iterdir()) == [] or all(entry.is_dir() for entry in tmp_path.iterdir())
 
 
 def test_lookup_or_initialize_propagates_generated_at_for_fresh_envelope(

@@ -371,9 +371,7 @@ class _BatchFakeClient:
     ) -> None:
         self.batch_status = batch_status
         self.per_comment_422_for = set(per_comment_422_for)
-        self.batch_calls: list[
-            tuple[Any, tuple[InlineCommentPayload, ...], str]
-        ] = []
+        self.batch_calls: list[tuple[Any, tuple[InlineCommentPayload, ...], str]] = []
         self.inline_calls: list[tuple[Any, InlineCommentPayload, str]] = []
 
     def post_pull_request_review(
@@ -464,9 +462,7 @@ def test_post_inline_comments_falls_back_to_per_comment_on_422() -> None:
     assert result.skipped_after_422 == 0
     # The fallback transition should be visible in the debug log so an
     # operator can trace why the per-comment endpoint started firing.
-    assert any(
-        "Batched PR review rejected with 422" in message for message in debug_messages
-    )
+    assert any("Batched PR review rejected with 422" in message for message in debug_messages)
 
 
 def test_post_inline_comments_drops_individual_422_during_fallback() -> None:

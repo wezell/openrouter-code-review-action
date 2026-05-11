@@ -256,9 +256,7 @@ def build_aider_message(
 
     instructions = (extra_instructions or "").strip()
     if instructions:
-        sections.append(
-            "<extra_instructions>\n" + instructions + "\n</extra_instructions>\n"
-        )
+        sections.append("<extra_instructions>\n" + instructions + "\n</extra_instructions>\n")
 
     if not findings:
         sections.append("<findings>\n(no findings supplied)\n</findings>\n")

@@ -38,9 +38,7 @@ FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "baseline"
 def _eval_id_to_fixture_id(eval_id: str) -> str:
     """``dotcms-core-35567`` → ``pr-35567`` (the fixture-tree convention)."""
     if not eval_id.startswith("dotcms-core-"):
-        raise ValueError(
-            f"unexpected eval id {eval_id!r}; expected 'dotcms-core-<NUMBER>'"
-        )
+        raise ValueError(f"unexpected eval id {eval_id!r}; expected 'dotcms-core-<NUMBER>'")
     number = eval_id[len("dotcms-core-") :]
     if not number.isdigit():
         raise ValueError(f"unexpected eval id suffix {eval_id!r}")
@@ -68,9 +66,7 @@ def _build_fixture_payload(eval_artifact: dict[str, Any], fixture_id: str) -> di
     payload["source"] = {
         "eval_artifact": str(
             (
-                EVAL_RUNS
-                / f"dotcms-core-{fixture_id.removeprefix('pr-')}"
-                / "codex.json"
+                EVAL_RUNS / f"dotcms-core-{fixture_id.removeprefix('pr-')}" / "codex.json"
             ).relative_to(REPO_ROOT)
         ),
         "produced_by": "eval.run_codex_baseline",

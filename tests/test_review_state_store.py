@@ -480,9 +480,7 @@ def test_iter_states_yields_every_saved_state(tmp_path: Path) -> None:
 def test_iter_states_skips_corrupt_entries_by_default(tmp_path: Path) -> None:
     store = ReviewStateStore(tmp_path)
     store.save(_sample_state(key=_sample_key("good")))
-    bad_path = (
-        tmp_path / f"{_sample_key('bad').cache_key()}{STATE_FILE_SUFFIX}"
-    )
+    bad_path = tmp_path / f"{_sample_key('bad').cache_key()}{STATE_FILE_SUFFIX}"
     bad_path.write_text("{not json", encoding="utf-8")
 
     states = list(store.iter_states())
@@ -495,9 +493,7 @@ def test_iter_states_propagates_corruption_when_tolerance_disabled(
 ) -> None:
     store = ReviewStateStore(tmp_path)
     store.save(_sample_state(key=_sample_key("good")))
-    bad_path = (
-        tmp_path / f"{_sample_key('bad').cache_key()}{STATE_FILE_SUFFIX}"
-    )
+    bad_path = tmp_path / f"{_sample_key('bad').cache_key()}{STATE_FILE_SUFFIX}"
     bad_path.write_text("{not json", encoding="utf-8")
 
     with pytest.raises(ReviewContractError):

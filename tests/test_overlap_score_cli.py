@@ -40,7 +40,6 @@ from eval import overlap_aggregate as oa
 from eval import overlap_metrics as om
 from eval import overlap_score as os_mod
 
-
 # ---------------------------------------------------------------------------
 # Synthetic fixtures (mirrors tests/test_overlap_metrics.py shape)
 # ---------------------------------------------------------------------------
@@ -154,9 +153,7 @@ def _stage_pr(
 
 
 @pytest.fixture
-def staged(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> dict[str, Path]:
+def staged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, Path]:
     """Redirect every persistence root the CLI touches into ``tmp_path``.
 
     Lays out two PRs with deterministic match counts:
@@ -253,9 +250,7 @@ class TestCLIMatching:
         rc = os_mod.main([])
         assert rc == 0
 
-        record_1 = json.loads(
-            (staged["runs"] / "dotcms-core-1" / "overlap.json").read_text()
-        )
+        record_1 = json.loads((staged["runs"] / "dotcms-core-1" / "overlap.json").read_text())
         # Engine semantics: 1 TP, 1 FP, 1 FN — proves the CLI delegates
         # to ``match_findings`` and the predicate fires on path+line.
         assert record_1["metrics"]["true_positive"] == 1
@@ -264,18 +259,14 @@ class TestCLIMatching:
         assert record_1["metrics"]["precision"] == 0.5
         assert record_1["metrics"]["recall"] == 0.5
 
-        record_2 = json.loads(
-            (staged["runs"] / "dotcms-core-2" / "overlap.json").read_text()
-        )
+        record_2 = json.loads((staged["runs"] / "dotcms-core-2" / "overlap.json").read_text())
         assert record_2["metrics"]["true_positive"] == 2
         assert record_2["metrics"]["false_positive"] == 0
         assert record_2["metrics"]["false_negative"] == 0
         assert record_2["metrics"]["precision"] == 1.0
         assert record_2["metrics"]["recall"] == 1.0
 
-    def test_pr_id_filter_only_writes_filtered_target(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_pr_id_filter_only_writes_filtered_target(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         (staged["runs"] / "dotcms-core-2").mkdir()
 
@@ -305,9 +296,7 @@ class TestCLIMatching:
 
 
 class TestCLIPersistence:
-    def test_default_run_writes_both_layers(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_default_run_writes_both_layers(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         (staged["runs"] / "dotcms-core-2").mkdir()
 
@@ -317,31 +306,23 @@ class TestCLIPersistence:
         assert (staged["runs"] / "dotcms-core-2" / "overlap.json").is_file()
         assert staged["aggregate_path"].is_file()
 
-    def test_skip_aggregate_only_writes_per_pr(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_skip_aggregate_only_writes_per_pr(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         rc = os_mod.main(["--skip-aggregate"])
         assert rc == 0
         assert (staged["runs"] / "dotcms-core-1" / "overlap.json").is_file()
         assert not staged["aggregate_path"].exists()
 
-    def test_idempotent_writes_produce_identical_content(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_idempotent_writes_produce_identical_content(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         (staged["runs"] / "dotcms-core-2").mkdir()
 
         os_mod.main([])
-        first = (
-            staged["runs"] / "dotcms-core-1" / "overlap.json"
-        ).read_text()
+        first = (staged["runs"] / "dotcms-core-1" / "overlap.json").read_text()
         first_agg = staged["aggregate_path"].read_text()
 
         os_mod.main([])
-        second = (
-            staged["runs"] / "dotcms-core-1" / "overlap.json"
-        ).read_text()
+        second = (staged["runs"] / "dotcms-core-1" / "overlap.json").read_text()
         second_agg = staged["aggregate_path"].read_text()
 
         # ``generated_at`` is the only volatile field; strip it.
@@ -378,9 +359,7 @@ class TestCLIPersistence:
 
 
 class TestCLICheck:
-    def test_check_after_fresh_write_returns_zero(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_check_after_fresh_write_returns_zero(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         (staged["runs"] / "dotcms-core-2").mkdir()
 
@@ -420,9 +399,7 @@ class TestCLICheck:
         agg = json.loads(staged["aggregate_path"].read_text())
         # Mutate any deeply-nested numeric field guaranteed to exist.
         agg["schema_version"] = "tampered"
-        staged["aggregate_path"].write_text(
-            json.dumps(agg), encoding="utf-8"
-        )
+        staged["aggregate_path"].write_text(json.dumps(agg), encoding="utf-8")
 
         rc = os_mod.main(["--check"])
         assert rc == 1
@@ -445,9 +422,7 @@ class TestCLICheck:
         err = capsys.readouterr().err
         assert "missing overlap.json" in err
 
-    def test_check_skip_aggregate_only_validates_per_pr(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_check_skip_aggregate_only_validates_per_pr(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         os_mod.main(["--skip-aggregate"])
         # Aggregate file does not exist; default --check would fail. With
@@ -464,9 +439,7 @@ class TestCLICheck:
 
 
 class TestCLIAggregateMath:
-    def test_aggregate_pools_per_pr_counts(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_aggregate_pools_per_pr_counts(self, staged: dict[str, Path]) -> None:
         (staged["runs"] / "dotcms-core-1").mkdir()
         (staged["runs"] / "dotcms-core-2").mkdir()
         assert os_mod.main([]) == 0
@@ -581,9 +554,7 @@ class TestCLIAggregateMath:
 
 
 class TestCLIArgs:
-    def test_negative_tolerance_rejected(
-        self, staged: dict[str, Path]
-    ) -> None:
+    def test_negative_tolerance_rejected(self, staged: dict[str, Path]) -> None:
         with pytest.raises(SystemExit):
             os_mod.main(["--tolerance", "-1"])
 

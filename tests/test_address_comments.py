@@ -13,6 +13,11 @@ from cli.review.posting import ReviewPostingOutcome
 from cli.workflows.act_runner import ActAgentResult
 from cli.workflows.edit_prompt import CommentContextRenderResult
 from cli.workflows.edit_workflow import EditWorkflow, _wants_fix_unresolved
+from cli.workflows.review_workflow import (
+    SUMMARY_TIP,
+    ReviewSummary,
+    _build_review_summary,
+)
 
 
 def _act_result(stdout: str = "ok", *, returncode: int = 0) -> ActAgentResult:
@@ -26,11 +31,6 @@ def _act_result(stdout: str = "ok", *, returncode: int = 0) -> ActAgentResult:
         applied_files=(),
         error_message=None if returncode == 0 else "fake aider error",
     )
-from cli.workflows.review_workflow import (
-    SUMMARY_TIP,
-    ReviewSummary,
-    _build_review_summary,
-)
 
 
 def _make_ep() -> EditWorkflow:

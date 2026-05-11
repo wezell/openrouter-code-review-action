@@ -7,7 +7,6 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from ..clients.codex_client import CodexClient
-from .act_runner import ActAgentResult, ActModeRunner
 from ..clients.git_ops import (
     GitWorktreeSnapshot,
     git_changed_paths_since_snapshot,
@@ -31,6 +30,7 @@ from ..core.config import ReviewConfig, make_debug
 from ..core.exceptions import GitHubAPIError
 from ..core.github_types import PullRequestLikeProtocol
 from ..core.models import CommentContext, ReviewCommentSnapshot
+from .act_runner import ActAgentResult, ActModeRunner
 from .edit_prompt import (
     build_comment_context_block,
     build_edit_prompt,

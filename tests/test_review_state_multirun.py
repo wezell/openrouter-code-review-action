@@ -145,9 +145,7 @@ def _finding(
         confidence_score=0.85,
         inline_comment_id=inline_comment_id,
         general_comment_id=general_comment_id,
-        review_thread_id=(
-            f"PRRT_{line:04d}" if inline_comment_id is not None else None
-        ),
+        review_thread_id=(f"PRRT_{line:04d}" if inline_comment_id is not None else None),
         finding_fingerprint=f"sha256:{line:08d}",
     )
 
@@ -180,9 +178,7 @@ def test_greenfield_to_recorded_to_rerun_round_trip(tmp_path: Path) -> None:
     assert first.state.findings == ()
     # Initialisation must not eagerly write — store dir does not yet exist
     # or, if it does, must contain no namespaced files.
-    namespaced = (
-        list(run1.store.list_paths()) if run1.store.base_dir.exists() else []
-    )
+    namespaced = list(run1.store.list_paths()) if run1.store.base_dir.exists() else []
     assert namespaced == []
 
     # ---- Run 1 (continued): workflow records its findings.
@@ -252,34 +248,26 @@ def test_three_run_incremental_continuation_accumulates_findings(
 
     # ---- Run 2: PR HEAD advances to sha2; lookup with previous_head_sha.
     run2 = _new_manager(tmp_path)
-    fallback_at_2 = run2.lookup_or_initialize(
-        _key("sha2"), previous_head_sha="sha1"
-    )
+    fallback_at_2 = run2.lookup_or_initialize(_key("sha2"), previous_head_sha="sha1")
     assert fallback_at_2.source == LOOKUP_SOURCE_PREVIOUS_SHA
     assert fallback_at_2.fallback_key == _key("sha1")
     assert fallback_at_2.state.findings[0].title == "bug-A"
 
     rekeyed_2 = run2.migrate_to_sha(fallback_at_2.state, "sha2")
     # Workflow appends a new finding from this run's re-review.
-    accumulated_2 = rekeyed_2.with_findings(
-        (*rekeyed_2.findings, _finding(line=20, title="bug-B"))
-    )
+    accumulated_2 = rekeyed_2.with_findings((*rekeyed_2.findings, _finding(line=20, title="bug-B")))
     run2.record_state(accumulated_2)
 
     # ---- Run 3: sha3 fall-back via sha2; both findings carry forward.
     run3 = _new_manager(tmp_path)
-    fallback_at_3 = run3.lookup_or_initialize(
-        _key("sha3"), previous_head_sha="sha2"
-    )
+    fallback_at_3 = run3.lookup_or_initialize(_key("sha3"), previous_head_sha="sha2")
     assert fallback_at_3.source == LOOKUP_SOURCE_PREVIOUS_SHA
     assert fallback_at_3.fallback_key == _key("sha2")
     titles = tuple(f.title for f in fallback_at_3.state.findings)
     assert titles == ("bug-A", "bug-B")
 
     rekeyed_3 = run3.migrate_to_sha(fallback_at_3.state, "sha3")
-    accumulated_3 = rekeyed_3.with_findings(
-        (*rekeyed_3.findings, _finding(line=30, title="bug-C"))
-    )
+    accumulated_3 = rekeyed_3.with_findings((*rekeyed_3.findings, _finding(line=30, title="bug-C")))
     run3.record_state(accumulated_3)
 
     # All three SHAs must now be discoverable side by side — incremental
@@ -348,9 +336,7 @@ def test_force_push_with_no_neighbour_initialises_fresh_envelope(
     # Simulate cache eviction by deleting the run1 record.
     assert run2.discard(_key("sha1")) is True
 
-    result = run2.lookup_or_initialize(
-        _key("force-pushed-sha"), previous_head_sha="abandoned-sha"
-    )
+    result = run2.lookup_or_initialize(_key("force-pushed-sha"), previous_head_sha="abandoned-sha")
     assert result.initialized is True
     assert result.source == LOOKUP_SOURCE_INITIALIZED
     assert result.state.findings == ()
@@ -365,9 +351,7 @@ def test_force_push_records_fresh_envelope_under_new_sha(tmp_path: Path) -> None
 
     # Run 2: force-push, no neighbour, fresh full review under fp-sha.
     run2 = _new_manager(tmp_path)
-    result = run2.lookup_or_initialize(
-        _key("fp-sha"), previous_head_sha="phantom-sha"
-    )
+    result = run2.lookup_or_initialize(_key("fp-sha"), previous_head_sha="phantom-sha")
     assert result.initialized is True
     run2.record_review_run(
         _key("fp-sha"),
@@ -464,12 +448,8 @@ def test_multiple_prs_share_directory_without_collision(tmp_path: Path) -> None:
 
     # Two independent run-1 invocations write under one RUNNER_TEMP.
     runner = tmp_path
-    _new_manager(runner).record_review_run(
-        pr_a, findings=(_finding(line=1, title="A-1"),)
-    )
-    _new_manager(runner).record_review_run(
-        pr_b, findings=(_finding(line=2, title="B-1"),)
-    )
+    _new_manager(runner).record_review_run(pr_a, findings=(_finding(line=1, title="A-1"),))
+    _new_manager(runner).record_review_run(pr_b, findings=(_finding(line=2, title="B-1"),))
 
     # A subsequent run for PR A must see only PR A's findings, never
     # PR B's, even though they share the directory.
@@ -541,19 +521,13 @@ def test_review_model_change_does_not_share_cache(tmp_path: Path) -> None:
 
     # Both records persist side by side.
     inspector = _new_manager(runner)
-    by_model = {
-        state.key.review_model: state for state in inspector.store.iter_states()
-    }
+    by_model = {state.key.review_model: state for state in inspector.store.iter_states()}
     assert set(by_model.keys()) == {
         "anthropic/claude-opus-4.7",
         "anthropic/claude-opus-5.0",
     }
-    assert by_model["anthropic/claude-opus-4.7"].findings[0].title == (
-        "found-by-opus-4.7"
-    )
-    assert by_model["anthropic/claude-opus-5.0"].findings[0].title == (
-        "found-by-opus-5.0"
-    )
+    assert by_model["anthropic/claude-opus-4.7"].findings[0].title == ("found-by-opus-4.7")
+    assert by_model["anthropic/claude-opus-5.0"].findings[0].title == ("found-by-opus-5.0")
 
 
 # ---------------------------------------------------------------------------
@@ -657,10 +631,20 @@ def test_persisted_file_validates_against_schema_layer(tmp_path: Path) -> None:
     key = _key("sha1")
     manager = _new_manager(tmp_path)
     findings = (
-        _finding(line=10, title="HIGH", severity=SEVERITY_HIGH,
-                 inline_comment_id=11, general_comment_id=None),
-        _finding(line=20, title="GENERAL-FALLBACK", severity=SEVERITY_MEDIUM,
-                 inline_comment_id=None, general_comment_id=22),
+        _finding(
+            line=10,
+            title="HIGH",
+            severity=SEVERITY_HIGH,
+            inline_comment_id=11,
+            general_comment_id=None,
+        ),
+        _finding(
+            line=20,
+            title="GENERAL-FALLBACK",
+            severity=SEVERITY_MEDIUM,
+            inline_comment_id=None,
+            general_comment_id=22,
+        ),
     )
     manager.record_review_run(
         key,

@@ -105,8 +105,6 @@ from pathlib import Path
 from typing import Any
 
 from eval.compare_findings import (
-    BASELINE_ROOT,
-    CANDIDATE_ROOT,
     PRComparison,
     compare_pr,
     discover_pr_ids,
@@ -190,9 +188,7 @@ def _resolve_targets(
     runs_ids = _read_sample_registry(registry)
     if runs_ids:
         return runs_ids, "registry"
-    fixture_ids = discover_pr_ids(
-        baseline_root=baseline_root, candidate_root=candidate_root
-    )
+    fixture_ids = discover_pr_ids(baseline_root=baseline_root, candidate_root=candidate_root)
     discovered: list[str] = []
     for fid in fixture_ids:
         try:
@@ -319,12 +315,8 @@ def _per_category(comparisons: Sequence[PRComparison]) -> dict[str, dict[str, An
     # Compute per-bucket precision/recall now that the totals are in.
     for sev in _SEVERITY_BUCKETS:
         bucket = out[sev]
-        bucket["recall"] = _safe_ratio(
-            bucket["matched_codex"], bucket["codex_total"]
-        )
-        bucket["precision"] = _safe_ratio(
-            bucket["matched_openrouter"], bucket["openrouter_total"]
-        )
+        bucket["recall"] = _safe_ratio(bucket["matched_codex"], bucket["codex_total"])
+        bucket["precision"] = _safe_ratio(bucket["matched_openrouter"], bucket["openrouter_total"])
     return out
 
 
@@ -376,8 +368,7 @@ def build_aggregate_record(
     """
     if len(targets) != len(comparisons):
         raise ValueError(
-            f"targets ({len(targets)}) must align with comparisons "
-            f"({len(comparisons)})"
+            f"targets ({len(targets)}) must align with comparisons ({len(comparisons)})"
         )
 
     rows = [_build_row(runs_id, cmp) for runs_id, cmp in zip(targets, comparisons)]
@@ -620,10 +611,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--tolerance",
         type=int,
         default=LINE_PROXIMITY_TOLERANCE,
-        help=(
-            f"± lines tolerance for proximity matching "
-            f"(default: {LINE_PROXIMITY_TOLERANCE})."
-        ),
+        help=(f"± lines tolerance for proximity matching (default: {LINE_PROXIMITY_TOLERANCE})."),
     )
     args = parser.parse_args(argv)
 

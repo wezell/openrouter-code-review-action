@@ -369,9 +369,7 @@ def _keyword_hits(text: str, keywords: Iterable[str]) -> tuple[str, ...]:
     return tuple(hits)
 
 
-def _path_matches(
-    finding_path: str | None, gt_path: str | None
-) -> bool:
+def _path_matches(finding_path: str | None, gt_path: str | None) -> bool:
     """Return True when finding and ground-truth paths refer to the same file.
 
     Strict equality is required when both sides set a path; an
@@ -892,9 +890,7 @@ def write_scored_artifacts(
     written: list[Path] = []
     for result in results:
         path = scored_artifact_path(result.pr_id, runs_dir=runs_dir)
-        artifact = _build_scored_artifact(
-            result, generated_at=generated_at, tolerance=tolerance
-        )
+        artifact = _build_scored_artifact(result, generated_at=generated_at, tolerance=tolerance)
         _atomic_write(path, _serialize(artifact))
         written.append(path)
     summary_target = summary_path if summary_path is not None else SUMMARY_PATH
@@ -944,13 +940,9 @@ def check_scored_artifacts(
     fresh_summary = _build_summary(results, generated_at="<ignored-for-check>")
     on_disk_summary = _load_codex_artifact(summary_target)
     if on_disk_summary is None:
-        drift.append(
-            f"{_display_path(summary_target)}: missing scoring summary"
-        )
+        drift.append(f"{_display_path(summary_target)}: missing scoring summary")
     elif _strip_volatile(on_disk_summary) != _strip_volatile(fresh_summary):
-        drift.append(
-            f"{_display_path(summary_target)}: scoring summary differs from rebuild"
-        )
+        drift.append(f"{_display_path(summary_target)}: scoring summary differs from rebuild")
     return drift
 
 
@@ -971,23 +963,17 @@ def score_all(
         dataset = load_dataset()
     if sample is None:
         sample = _load_sample()
-    return [
-        score_pr(pr, dataset, runs_dir=runs_dir, tolerance=tolerance)
-        for pr in sample
-    ]
+    return [score_pr(pr, dataset, runs_dir=runs_dir, tolerance=tolerance) for pr in sample]
 
 
-def _select(
-    sample: Sequence[_SamplePR], pr_ids: Sequence[str] | None
-) -> list[_SamplePR]:
+def _select(sample: Sequence[_SamplePR], pr_ids: Sequence[str] | None) -> list[_SamplePR]:
     if not pr_ids:
         return list(sample)
     by_id = {pr.id: pr for pr in sample}
     missing = [pid for pid in pr_ids if pid not in by_id]
     if missing:
         raise SystemExit(
-            f"unknown pr_id(s): {', '.join(missing)}. "
-            f"Known: {', '.join(sorted(by_id))}"
+            f"unknown pr_id(s): {', '.join(missing)}. Known: {', '.join(sorted(by_id))}"
         )
     return [by_id[pid] for pid in pr_ids]
 
@@ -1030,15 +1016,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     sample = _load_sample()
     if not sample:
-        raise SystemExit(
-            f"{SAMPLE_PATH}: prs[] is empty. Populate the sample registry first."
-        )
+        raise SystemExit(f"{SAMPLE_PATH}: prs[] is empty. Populate the sample registry first.")
     targets = _select(sample, args.pr_ids)
 
     dataset = load_dataset()
-    results = [
-        score_pr(pr, dataset, tolerance=args.tolerance) for pr in targets
-    ]
+    results = [score_pr(pr, dataset, tolerance=args.tolerance) for pr in targets]
 
     if args.check:
         drift = check_scored_artifacts(results, tolerance=args.tolerance)
@@ -1052,9 +1034,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"scored artifacts in sync ({len(results)} PRs)")
         return 0
 
-    written, summary_target = write_scored_artifacts(
-        results, tolerance=args.tolerance
-    )
+    written, summary_target = write_scored_artifacts(results, tolerance=args.tolerance)
     by_status: dict[str, int] = {}
     for r in results:
         by_status[r.status] = by_status.get(r.status, 0) + 1
