@@ -112,10 +112,17 @@ runs:
         key: ${{ steps.review_resume_state.outputs.restore_key }}
     - name: Install Python dependencies
       shell: bash
+      env:
+        DOTBOT_PROVIDER: ${{ env.DOTBOT_PROVIDER }}
       run: |
         set -euo pipefail
         python3 -m pip install --upgrade pip
         python3 -m pip install ${{ inputs.extra_pip_args }} -r "${{ github.action_path }}/requirements.txt"
+        # The legacy openai (Codex SDK) provider carries a large dependency;
+        # only install it when that provider is actually selected.
+        if [ "${DOTBOT_PROVIDER:-openrouter}" = "openai" ]; then
+          python3 -m pip install ${{ inputs.extra_pip_args }} -r "${{ github.action_path }}/requirements-openai.txt"
+        fi
 
     - name: Run dotbot autonomous review (CLI)
       id: run_dotbot_cli

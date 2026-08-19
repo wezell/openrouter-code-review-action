@@ -238,7 +238,6 @@ name = "dotbot-code-review-action"
 version = "0.0.0"
 source = { virtual = "." }
 dependencies = [
-    { name = "codex-python" },
     { name = "pydantic" },
     { name = "pygithub" },
     { name = "pyyaml" },
@@ -246,6 +245,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "codex-python" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -254,7 +254,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "codex-python", specifier = "==1.122.0" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pygithub", specifier = "==2.8.1" },
     { name = "pyyaml", specifier = "==6.0.3" },
@@ -262,6 +261,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "codex-python", specifier = "==1.122.0" },
     { name = "mypy" },
     { name = "pre-commit" },
     { name = "pytest" },
