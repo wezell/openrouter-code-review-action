@@ -1,0 +1,44 @@
+name: Auto Release on Merge
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Cut next patch release
+        run: |
+          set -euo pipefail
+          latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -1 || true)
+          if [ -z "$latest" ]; then
+            echo "No existing version tags; skipping auto-release."
+            exit 0
+          fi
+          major=$(echo "$latest" | sed -E 's/^v([0-9]+).*/\1/')
+          minor=$(echo "$latest" | sed -E 's/^v[0-9]+\.([0-9]+).*/\1/')
+          patch=$(echo "$latest" | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+).*/\1/')
+          next="v${major}.${minor}.$((patch + 1))"
+          echo "Cutting ${next} (prior ${latest})"
+          git tag -a "$next" -m "dotbot code review ${next}"
+          git push origin "$next"
+          gh release create "$next" \
+            --title "dotbot code review ${next}" \
+            --latest \
+            --notes "Auto-generated release from merge to main."
