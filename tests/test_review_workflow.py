@@ -11,6 +11,7 @@ import pytest
 from cli.clients.openrouter_thread_store import OpenRouterThreadStore
 from cli.core.config import ReviewConfig
 from cli.core.exceptions import DotBotExecutionError, ReviewContractError, ReviewResumeError
+from cli.core.model_config import DEFAULT_REVIEW_MODEL
 from cli.core.models import InlineCommentPayload, ReviewThreadComment, ReviewThreadSnapshot
 from cli.review.artifacts import ReviewArtifacts
 from cli.review.posting import ReviewPostingOutcome
@@ -235,6 +236,7 @@ class _FakeCodexClient:
         output_schema: dict[str, object],
         schema_prompt: str,
         sandbox_mode: str,
+        model_name: str | None = None,
         resume_thread_id: str | None = None,
     ) -> str:
         self.calls.append(
@@ -243,6 +245,7 @@ class _FakeCodexClient:
                 "output_schema": output_schema,
                 "schema_prompt": schema_prompt,
                 "sandbox_mode": sandbox_mode,
+                "model_name": model_name,
                 "resume_thread_id": resume_thread_id,
             }
         )
@@ -254,6 +257,7 @@ def _make_config(
     *,
     dry_run: bool = False,
     model_provider: str = "openrouter",
+    review_models: tuple[str, ...] = (),
 ) -> ReviewConfig:
     return ReviewConfig(
         github_token="token",
@@ -262,6 +266,7 @@ def _make_config(
         mode="review",
         model_provider=model_provider,
         dry_run=dry_run,
+        review_models=review_models,
         repo_root=tmp_path,
     )
 
@@ -355,7 +360,12 @@ def test_process_review_posts_summary_and_passes_dedupe_context(
     assert prior_summary.deleted is True
     assert len(pr.as_issue().created_comments) == 1
     assert SUMMARY_MARKER in pr.as_issue().created_comments[0]
-    assert render_review_summary_metadata("head-sha") in pr.as_issue().created_comments[0]
+    assert (
+        render_review_summary_metadata(
+            "head-sha", model=DEFAULT_REVIEW_MODEL, reasoning_effort="medium"
+        )
+        in pr.as_issue().created_comments[0]
+    )
     assert "Needs one fix." in pr.as_issue().created_comments[0]
     assert post_calls[0]["head_sha"] == "head-sha"
     assert result.review.overall_correctness == "patch is incorrect"
@@ -509,7 +519,12 @@ def test_process_review_summary_counts_carried_forward_codex_comments(tmp_path: 
         in pr.as_issue().created_comments[0]
     )
     assert "No additional non-redundant findings." not in pr.as_issue().created_comments[0]
-    assert render_review_summary_metadata("head-sha") in pr.as_issue().created_comments[0]
+    assert (
+        render_review_summary_metadata(
+            "head-sha", model=DEFAULT_REVIEW_MODEL, reasoning_effort="medium"
+        )
+        in pr.as_issue().created_comments[0]
+    )
 
 
 def test_process_review_ignores_stale_prior_codex_thread(tmp_path: Path) -> None:
@@ -1489,6 +1504,59 @@ def test_process_review_wires_real_artifacts_and_inline_posting(tmp_path: Path) 
         "absolute_file_path": str(sample_file.resolve()),
         "line_range": {"start": 2, "end": 2},
     }
+
+
+def test_process_review_runs_each_model_in_roster_and_posts_per_model_summary(
+    tmp_path: Path,
+) -> None:
+    sample_file = tmp_path / "src.py"
+    sample_file.write_text("old\nnew\n", encoding="utf-8")
+
+    pr = _FakePR(
+        changed_files=[
+            _FakeChangedFile(
+                "src.py",
+                patch="@@ -1,1 +1,2 @@\n old\n+new\n",
+            )
+        ]
+    )
+    github_client = _FakeGitHubClient(pr)
+    model_client = _FakeCodexClient(
+        json.dumps(
+            {
+                "overall_correctness": "patch is correct",
+                "overall_explanation": "",
+                "overall_confidence_score": 0.8,
+                "carried_forward": [],
+                "findings": [],
+            }
+        )
+    )
+    workflow = ReviewWorkflow(
+        _make_config(
+            tmp_path,
+            review_models=("openai/gpt-5", "google/gemini-2.5-pro"),
+        ),
+        github_client=cast(Any, github_client),
+        model_client=cast(Any, model_client),
+    )
+
+    result = workflow.process_review(7)
+
+    # The roster is primary + 2 extras = 3 review passes.
+    assert len(model_client.calls) == 3
+    assert [call["model_name"] for call in model_client.calls] == [
+        DEFAULT_REVIEW_MODEL,
+        "openai/gpt-5",
+        "google/gemini-2.5-pro",
+    ]
+    # One summary posted per reviewer, each tagged with its model.
+    created = pr.as_issue().created_comments
+    assert len(created) == 3
+    assert f"- Reviewer: {DEFAULT_REVIEW_MODEL}" in created[0]
+    assert "- Reviewer: openai/gpt-5" in created[1]
+    assert "- Reviewer: google/gemini-2.5-pro" in created[2]
+    assert result.summary.overall_correctness == "patch is correct"
 
 
 def test_process_review_renamed_file_posts_current_findings_without_prefilter(

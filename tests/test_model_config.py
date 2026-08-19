@@ -244,3 +244,65 @@ def test_invalid_in_repo_file_raises_configuration_error(base_env: Path) -> None
 
     with pytest.raises(ConfigurationError, match="must be a non-empty string"):
         ReviewConfig.from_args(pr_number=1, mode="review")
+
+
+def test_review_models_list_parsed_from_in_repo_file(base_env: Path) -> None:
+    _write_config(
+        base_env,
+        "review:\n  model: deepseek/deepseek-v4-pro-0813\n  models:\n"
+        "    - openai/gpt-5\n    - google/gemini-2.5-pro\n",
+    )
+
+    config = ReviewConfig.from_args(pr_number=1, mode="review")
+
+    assert config.review_models == ("openai/gpt-5", "google/gemini-2.5-pro")
+    assert config.selected_review_models == (
+        DEFAULT_REVIEW_MODEL,
+        "openai/gpt-5",
+        "google/gemini-2.5-pro",
+    )
+
+
+def test_review_models_env_comma_separated(base_env: Path, monkeypatch) -> None:  # noqa: ANN001
+    monkeypatch.setenv("DOTBOT_REVIEW_MODELS", "openai/gpt-5, google/gemini-2.5-pro")
+
+    config = ReviewConfig.from_args(pr_number=1, mode="review")
+
+    assert config.review_models == ("openai/gpt-5", "google/gemini-2.5-pro")
+    assert config.selected_review_models == (
+        DEFAULT_REVIEW_MODEL,
+        "openai/gpt-5",
+        "google/gemini-2.5-pro",
+    )
+
+
+def test_review_models_deduplicated_and_empty_by_default(base_env: Path) -> None:
+    config = ReviewConfig.from_args(pr_number=1, mode="review")
+    assert config.review_models == ()
+    assert config.selected_review_models == (DEFAULT_REVIEW_MODEL,)
+
+
+def test_review_models_ignored_under_act(base_env: Path) -> None:
+    _write_config(
+        base_env,
+        "review:\n  models:\n    - openai/gpt-5\n",
+    )
+
+    config = ReviewConfig.from_args(pr_number=1, mode="act")
+
+    assert config.selected_model == DEFAULT_ACT_MODEL
+    assert config.review_models == ("openai/gpt-5",)
+
+
+def test_review_models_rejects_non_list(base_env: Path) -> None:
+    _write_config(base_env, "review:\n  models: openai/gpt-5\n")
+
+    with pytest.raises(ConfigurationError, match="non-empty list"):
+        ReviewConfig.from_args(pr_number=1, mode="review")
+
+
+def test_review_models_rejects_empty_list(base_env: Path) -> None:
+    _write_config(base_env, "review:\n  models: []\n")
+
+    with pytest.raises(ConfigurationError, match="non-empty list"):
+        ReviewConfig.from_args(pr_number=1, mode="review")

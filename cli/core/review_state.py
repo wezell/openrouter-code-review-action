@@ -80,15 +80,27 @@ OPENROUTER_REVIEW_SUMMARY_MARKER = "OpenRouter Code Review:"
 _SUMMARY_METADATA_RE = re.compile(r"<!--\s*openrouter-review-meta\s+({.*?})\s*-->")
 
 
-def render_review_summary_metadata(reviewed_head_sha: str) -> str:
+def render_review_summary_metadata(
+    reviewed_head_sha: str,
+    *,
+    model: str | None = None,
+    reasoning_effort: str | None = None,
+) -> str:
     """Render the HTML-comment metadata block embedded in the summary comment.
 
-    The format is intentionally minimal — a single JSON object with the
-    reviewed HEAD SHA — so the renderer and parser can never disagree on
-    field naming. ``parse_reviewed_head_sha`` is the inverse operation.
+    The format is intentionally minimal — a single JSON object carrying the
+    reviewed HEAD SHA plus (optionally) the model and reasoning effort that
+    produced the review, so the renderer and parser can never disagree on
+    field naming. ``parse_reviewed_head_sha`` is the inverse operation; older
+    summaries without ``model``/``reasoning_effort`` still parse.
     """
+    payload_data: dict[str, Any] = {"reviewed_head_sha": reviewed_head_sha}
+    if model is not None:
+        payload_data["model"] = model
+    if reasoning_effort is not None:
+        payload_data["reasoning_effort"] = reasoning_effort
     payload = json.dumps(
-        {"reviewed_head_sha": reviewed_head_sha},
+        payload_data,
         ensure_ascii=True,
         separators=(",", ":"),
     )

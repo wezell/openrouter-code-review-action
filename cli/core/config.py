@@ -27,6 +27,7 @@ _CONFIG_OVERRIDE_KEYS = frozenset(
         "openrouter_api_key",
         "model_name",
         "review_model",
+        "review_models",
         "act_model",
         "config_path",
         "reasoning_effort",
@@ -67,6 +68,7 @@ class _ReviewConfigValues(TypedDict):
     openrouter_api_key: str
     model_name: str
     review_model: str
+    review_models: tuple[str, ...]
     act_model: str
     config_path: str
     reasoning_effort: str
@@ -94,6 +96,7 @@ class ReviewConfig:
     openrouter_api_key: str = ""
     model_name: str = "gpt-5.4"
     review_model: str = DEFAULT_REVIEW_MODEL
+    review_models: tuple[str, ...] = ()
     act_model: str = DEFAULT_ACT_MODEL
     config_path: str = DEFAULT_CONFIG_PATH
     reasoning_effort: str = "medium"
@@ -275,6 +278,19 @@ class ReviewConfig:
             return self.act_model or DEFAULT_ACT_MODEL
         return self.review_model or DEFAULT_REVIEW_MODEL
 
+    @property
+    def selected_review_models(self) -> tuple[str, ...]:
+        """Return the complete reviewer model roster for review mode.
+
+        Order: the primary :attr:`review_model` first, then any extra
+        :attr:`review_models` (the multi-model "fight" roster from
+        ``review.models`` in the in-repo config or ``DOTBOT_REVIEW_MODELS``).
+        Deduplicated, preserving order.
+        """
+        roster: list[str] = [self.review_model or DEFAULT_REVIEW_MODEL]
+        roster.extend(model for model in self.review_models if model not in roster)
+        return tuple(roster)
+
     def load_model_config_file(self) -> ModelConfig:
         """Re-read the in-repo model config file off disk.
 
@@ -312,6 +328,13 @@ def _parse_allowed_commenter_associations(value: str | None) -> tuple[str, ...]:
     return associations
 
 
+def _parse_model_list(value: str | None) -> tuple[str, ...]:
+    """Parse a comma-separated list of OpenRouter model slugs for the reviewer roster."""
+    if not value:
+        return ()
+    return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
 def _config_values_from_environment() -> _ReviewConfigValues:
     github_token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
@@ -339,6 +362,7 @@ def _config_values_from_environment() -> _ReviewConfigValues:
         "model_name": os.environ.get("DOTBOT_MODEL", "gpt-5.4").strip(),
         "review_model": os.environ.get("OPENROUTER_REVIEW_MODEL", DEFAULT_REVIEW_MODEL).strip()
         or DEFAULT_REVIEW_MODEL,
+        "review_models": _parse_model_list(os.environ.get("DOTBOT_REVIEW_MODELS", "")),
         "act_model": os.environ.get("OPENROUTER_ACT_MODEL", DEFAULT_ACT_MODEL).strip()
         or DEFAULT_ACT_MODEL,
         "config_path": os.environ.get("OPENROUTER_REVIEW_CONFIG", DEFAULT_CONFIG_PATH).strip()
@@ -382,6 +406,8 @@ def _apply_in_repo_model_config(values: _ReviewConfigValues, *, explicit_keys: s
 
     if "review_model" not in explicit_keys:
         values["review_model"] = file_config.review_model
+    if "review_models" not in explicit_keys and file_config.review_models:
+        values["review_models"] = file_config.review_models
     if "act_model" not in explicit_keys:
         values["act_model"] = file_config.act_model
 
@@ -435,6 +461,15 @@ def _apply_config_overrides(values: _ReviewConfigValues, kwargs: Mapping[str, An
     review_model = kwargs.get("review_model")
     if review_model is not None:
         values["review_model"] = str(review_model).strip() or DEFAULT_REVIEW_MODEL
+
+    review_models = kwargs.get("review_models")
+    if review_models is not None:
+        if isinstance(review_models, str):
+            values["review_models"] = _parse_model_list(review_models)
+        else:
+            values["review_models"] = tuple(
+                str(model).strip() for model in review_models if str(model).strip()
+            )
 
     act_model = kwargs.get("act_model")
     if act_model is not None:
