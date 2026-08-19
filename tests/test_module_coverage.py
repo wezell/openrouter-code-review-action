@@ -761,17 +761,23 @@ def test_main_helpers_cover_commands_and_event_loading(
 
 def test_review_action_and_workflow_use_expected_resume_guard_and_model() -> None:
     action_yaml = Path("action.yml").read_text(encoding="utf-8")
-    workflow_yaml = Path(".github/workflows/dotbot-review.yml").read_text(encoding="utf-8")
+    review_workflow = Path(".github/workflows/dotbot-review.yml").read_text(encoding="utf-8")
+    act_workflow = Path(".github/workflows/dotbot-act.yml").read_text(encoding="utf-8")
 
     assert (
         "steps.review_dotbot_cache.outputs.cache-hit == 'true' && "
         "steps.review_resume_state.outputs.restore_key == "
         "steps.review_resume_state.outputs.current_cache_key"
     ) in action_yaml
-    # The self-hosted workflow wires the OpenRouter provider; the legacy
-    # ``model`` input is gone (model selection is the in-repo config file).
-    assert "openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}" in workflow_yaml
-    assert "model: gpt-" not in workflow_yaml
+    # Review and Act are separate workflows: review runs only on PR events
+    # so it reports as a genuine status check, Act only on /dotbot comments.
+    assert "on:\n  pull_request:" in review_workflow
+    assert "issue_comment:" in act_workflow
+    assert "openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}" in review_workflow
+    assert "openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}" in act_workflow
+    assert "mode: review" in review_workflow
+    assert "mode: act" in act_workflow
+    assert "model: deepseek/deepseek-v4-pro-0813" in review_workflow
 
 
 def test_edit_workflow_helpers_cover_reply_formatting_and_context_normalization() -> None:
