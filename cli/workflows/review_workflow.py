@@ -8,7 +8,6 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from ..clients.codex_client import CodexClient
 from ..clients.git_ops import (
     git_commit_shas,
     git_diff_name_only,
@@ -16,6 +15,8 @@ from ..clients.git_ops import (
     git_is_ancestor,
 )
 from ..clients.github_client import GitHubClient, GitHubClientProtocol
+from ..clients.model_client import ModelClientProtocol, create_model_client
+from ..clients.openrouter_thread_store import OpenRouterThreadStore
 from ..core.config import ReviewConfig, make_debug
 from ..core.exceptions import CodexExecutionError, ReviewContractError, ReviewResumeError
 from ..core.github_types import (
@@ -256,10 +257,10 @@ class ReviewWorkflow:
         config: ReviewConfig,
         *,
         github_client: GitHubClientProtocol | None = None,
-        codex_client: CodexClient | None = None,
+        model_client: ModelClientProtocol | None = None,
     ) -> None:
         self.config = config
-        self.codex_client = codex_client or CodexClient(config)
+        self.model_client = model_client or create_model_client(config)
         self.context_manager = ReviewContextWriter()
         self.github_client: GitHubClientProtocol = github_client or GitHubClient(config)
         self._debug = make_debug(config)
@@ -345,12 +346,6 @@ class ReviewWorkflow:
             )
             return None
 
-        codex_home_value = os.environ.get("CODEX_HOME")
-        if not isinstance(codex_home_value, str) or not codex_home_value.strip():
-            raise ReviewResumeError(
-                "Resume cache restored but CODEX_HOME is unset; cannot resume review thread"
-            )
-
         try:
             is_ancestor = git_is_ancestor(previous_reviewed_sha, head_sha)
         except subprocess.CalledProcessError as exc:
@@ -367,12 +362,29 @@ class ReviewWorkflow:
             )
             return None
 
-        codex_home = Path(codex_home_value)
-        try:
-            resume_thread_id = load_latest_thread_id(codex_home, Path.cwd())
-        except ReviewResumeError as exc:
-            self._debug(1, f"{exc}; starting fresh review")
-            return None
+        resume_thread_id: str | None
+        if self.config.model_provider == "openai":
+            codex_home_value = os.environ.get("CODEX_HOME")
+            if not isinstance(codex_home_value, str) or not codex_home_value.strip():
+                raise ReviewResumeError(
+                    "Resume cache restored but CODEX_HOME is unset; cannot resume review thread"
+                )
+            codex_home = Path(codex_home_value)
+            try:
+                resume_thread_id = load_latest_thread_id(codex_home, Path.cwd())
+            except ReviewResumeError as exc:
+                self._debug(1, f"{exc}; starting fresh review")
+                return None
+        else:
+            resume_thread_id = self._latest_openrouter_thread_id()
+            if resume_thread_id is None:
+                self._debug(
+                    1,
+                    "Resume cache restored but no OpenRouter thread was found for "
+                    f"{self.config.repository}#{self.config.pr_number} "
+                    f"model={self.config.review_model}; starting fresh review",
+                )
+                return None
 
         revision_range = f"{previous_reviewed_sha}..{head_sha}"
         try:
@@ -400,6 +412,19 @@ class ReviewWorkflow:
             inline_diff=inline_diff,
             commit_shas=commit_shas,
         )
+
+    def _latest_openrouter_thread_id(self) -> str | None:
+        """Most recently persisted OpenRouter thread for this repo/PR/model."""
+        store = OpenRouterThreadStore(OpenRouterThreadStore.default_directory())
+        try:
+            return store.latest_thread_id(
+                repository=self.config.repository,
+                pr_number=self.config.pr_number,
+                model=self.config.review_model,
+            )
+        except OSError as exc:
+            self._debug(1, f"Failed to list OpenRouter threads: {exc}; starting fresh review")
+            return None
 
     def _resolve_sha_delta_scope(
         self,
@@ -472,9 +497,7 @@ class ReviewWorkflow:
         if sha_delta_result.is_incremental:
             delta_paths = self._compute_sha_delta_paths(sha_delta_result)
             if delta_paths:
-                filtered = [
-                    file for file in changed_files if file.filename in delta_paths
-                ]
+                filtered = [file for file in changed_files if file.filename in delta_paths]
                 if filtered:
                     scoped_files = filtered
                     scoped_paths = tuple(file.filename for file in filtered if file.filename)
@@ -500,8 +523,7 @@ class ReviewWorkflow:
             else:
                 self._debug(
                     1,
-                    "SHA-delta range produced no extractable file paths; "
-                    "keeping full PR file set",
+                    "SHA-delta range produced no extractable file paths; keeping full PR file set",
                 )
 
         return _ShaDeltaScope(
@@ -530,7 +552,7 @@ class ReviewWorkflow:
             return frozenset()
         revision_range = f"{previous_sha}..{result.current_head_sha}"
         try:
-            paths = git_diff_name_only(revision_range)
+            delta_paths = git_diff_name_only(revision_range)
         except subprocess.CalledProcessError as exc:
             self._debug(
                 1,
@@ -538,7 +560,7 @@ class ReviewWorkflow:
                 "falling back to full PR file set",
             )
             return frozenset()
-        return frozenset(paths)
+        return frozenset(delta_paths)
 
     def _build_sha_delta_block(self, scope: _ShaDeltaScope | None) -> str:
         """Render the SHA-delta scope block embedded in the review prompt.
@@ -865,9 +887,7 @@ class ReviewWorkflow:
             previous_head_sha=self._previous_head_sha_hint(snapshots.issue_comments),
         )
         scoped_changed_files = (
-            sha_delta_scope.scoped_changed_files
-            if sha_delta_scope is not None
-            else changed_files
+            sha_delta_scope.scoped_changed_files if sha_delta_scope is not None else changed_files
         )
         sha_delta_block = "" if resume_block else self._build_sha_delta_block(sha_delta_scope)
 
@@ -890,7 +910,7 @@ class ReviewWorkflow:
 
         print("Running Codex to generate review findings...", flush=True)
 
-        output = self.codex_client.execute_structured(
+        output = self.model_client.execute_structured(
             prompt,
             sandbox_mode="danger-full-access",
             output_schema=REVIEW_OUTPUT_SCHEMA,

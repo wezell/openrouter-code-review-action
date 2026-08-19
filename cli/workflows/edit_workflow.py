@@ -6,7 +6,6 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ..clients.codex_client import CodexClient
 from ..clients.git_ops import (
     GitWorktreeSnapshot,
     git_changed_paths_since_snapshot,
@@ -26,6 +25,7 @@ from ..clients.git_ops import (
     git_worktree_snapshot,
 )
 from ..clients.github_client import GitHubClient, GitHubClientProtocol
+from ..clients.model_client import ModelClientProtocol, create_model_client
 from ..core.config import ReviewConfig, make_debug
 from ..core.exceptions import GitHubAPIError
 from ..core.github_types import PullRequestLikeProtocol
@@ -85,11 +85,11 @@ class EditWorkflow:
         self,
         config: ReviewConfig,
         *,
-        codex_client: CodexClient | None = None,
+        model_client: ModelClientProtocol | None = None,
         github_client: GitHubClientProtocol | None = None,
     ) -> None:
         self.config = config
-        self.codex_client = codex_client or CodexClient(config)
+        self.model_client = model_client or create_model_client(config)
         self.github_client: GitHubClientProtocol = github_client or GitHubClient(config)
         self._debug = make_debug(config)
 
@@ -272,7 +272,7 @@ class EditWorkflow:
         prompt: str,
     ) -> str | None:
         try:
-            return self.codex_client.execute_text(
+            return self.model_client.execute_text(
                 prompt,
                 sandbox_mode="danger-full-access",
             )

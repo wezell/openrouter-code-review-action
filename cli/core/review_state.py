@@ -138,21 +138,13 @@ class PriorReviewKey:
 
     def __post_init__(self) -> None:
         if not self.repository or "/" not in self.repository:
-            raise ReviewContractError(
-                "PriorReviewKey.repository must be in 'owner/repo' form"
-            )
+            raise ReviewContractError("PriorReviewKey.repository must be in 'owner/repo' form")
         if not isinstance(self.pr_number, int) or self.pr_number <= 0:
-            raise ReviewContractError(
-                "PriorReviewKey.pr_number must be a positive integer"
-            )
+            raise ReviewContractError("PriorReviewKey.pr_number must be a positive integer")
         if not isinstance(self.review_model, str) or not self.review_model.strip():
-            raise ReviewContractError(
-                "PriorReviewKey.review_model must be a non-empty string"
-            )
+            raise ReviewContractError("PriorReviewKey.review_model must be a non-empty string")
         if not isinstance(self.reviewed_head_sha, str) or not self.reviewed_head_sha.strip():
-            raise ReviewContractError(
-                "PriorReviewKey.reviewed_head_sha must be a non-empty string"
-            )
+            raise ReviewContractError("PriorReviewKey.reviewed_head_sha must be a non-empty string")
 
     def cache_key(self) -> str:
         """Render the deterministic, sanitized cache key string.
@@ -274,37 +266,25 @@ class PersistedReviewFinding:
 
     def __post_init__(self) -> None:
         if not isinstance(self.path, str) or not self.path.strip():
-            raise ReviewContractError(
-                "PersistedReviewFinding.path must be a non-empty string"
-            )
+            raise ReviewContractError("PersistedReviewFinding.path must be a non-empty string")
         if not isinstance(self.start_line, int) or self.start_line <= 0:
             raise ReviewContractError(
                 "PersistedReviewFinding.start_line must be a positive integer"
             )
         if not isinstance(self.end_line, int) or self.end_line < self.start_line:
-            raise ReviewContractError(
-                "PersistedReviewFinding.end_line must be >= start_line"
-            )
+            raise ReviewContractError("PersistedReviewFinding.end_line must be >= start_line")
         if not isinstance(self.title, str):
             raise ReviewContractError("PersistedReviewFinding.title must be a string")
         if not isinstance(self.body, str):
             raise ReviewContractError("PersistedReviewFinding.body must be a string")
         if not isinstance(self.severity, str) or not self.severity.strip():
-            raise ReviewContractError(
-                "PersistedReviewFinding.severity must be a non-empty string"
-            )
+            raise ReviewContractError("PersistedReviewFinding.severity must be a non-empty string")
         if self.side not in ("LEFT", "RIGHT"):
-            raise ReviewContractError(
-                "PersistedReviewFinding.side must be 'LEFT' or 'RIGHT'"
-            )
+            raise ReviewContractError("PersistedReviewFinding.side must be 'LEFT' or 'RIGHT'")
         if self.suggestion is not None and not isinstance(self.suggestion, str):
-            raise ReviewContractError(
-                "PersistedReviewFinding.suggestion must be a string or null"
-            )
+            raise ReviewContractError("PersistedReviewFinding.suggestion must be a string or null")
         if self.priority is not None and not isinstance(self.priority, int):
-            raise ReviewContractError(
-                "PersistedReviewFinding.priority must be an integer or null"
-            )
+            raise ReviewContractError("PersistedReviewFinding.priority must be an integer or null")
         if self.confidence_score is not None and not isinstance(
             self.confidence_score, (int, float)
         ):
@@ -336,8 +316,10 @@ class PersistedReviewFinding:
     @property
     def comment_id(self) -> int | None:
         """Convenience: the inline comment ID if present, else the general one."""
-        return self.inline_comment_id if self.inline_comment_id is not None else (
-            self.general_comment_id
+        return (
+            self.inline_comment_id
+            if self.inline_comment_id is not None
+            else (self.general_comment_id)
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -365,9 +347,7 @@ class PersistedReviewFinding:
         try:
             start_line = _require_int(payload, "start_line")
             end_line_raw = payload.get("end_line")
-            end_line = (
-                _require_int(payload, "end_line") if end_line_raw is not None else start_line
-            )
+            end_line = _require_int(payload, "end_line") if end_line_raw is not None else start_line
             return cls(
                 path=_require_str(payload, "path"),
                 start_line=start_line,
@@ -388,9 +368,7 @@ class PersistedReviewFinding:
         except ReviewContractError:
             raise
         except (KeyError, TypeError, ValueError) as exc:
-            raise ReviewContractError(
-                f"Invalid PersistedReviewFinding payload: {exc}"
-            ) from exc
+            raise ReviewContractError(f"Invalid PersistedReviewFinding payload: {exc}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -437,16 +415,12 @@ class PriorReviewState:
                 "Unsupported review-state schema version: "
                 f"{self.schema_version!r} (expected {REVIEW_STATE_SCHEMA_VERSION!r})"
             )
-        if self.summary_comment_id is not None and not isinstance(
-            self.summary_comment_id, int
-        ):
+        if self.summary_comment_id is not None and not isinstance(self.summary_comment_id, int):
             raise ReviewContractError(
                 "PriorReviewState.summary_comment_id must be an integer or null"
             )
         if self.generated_at is not None and not isinstance(self.generated_at, str):
-            raise ReviewContractError(
-                "PriorReviewState.generated_at must be a string or null"
-            )
+            raise ReviewContractError("PriorReviewState.generated_at must be a string or null")
 
     @property
     def reviewed_head_sha(self) -> str:
@@ -540,9 +514,7 @@ class PriorReviewState:
 
         schema_version = payload.get("schema_version")
         if not isinstance(schema_version, str) or not schema_version.strip():
-            raise ReviewContractError(
-                "PriorReviewState.schema_version must be a non-empty string"
-            )
+            raise ReviewContractError("PriorReviewState.schema_version must be a non-empty string")
         if schema_version != REVIEW_STATE_SCHEMA_VERSION:
             # Refuse rather than silently best-effort-parse: a future
             # writer may have added required fields the current reader
@@ -564,9 +536,7 @@ class PriorReviewState:
         findings: list[PersistedReviewFinding] = []
         for index, item in enumerate(findings_raw):
             if not isinstance(item, Mapping):
-                raise ReviewContractError(
-                    f"PriorReviewState.findings[{index}] must be an object"
-                )
+                raise ReviewContractError(f"PriorReviewState.findings[{index}] must be an object")
             findings.append(PersistedReviewFinding.from_mapping(item))
 
         carried_raw = payload.get("carried_forward_comment_ids", [])
@@ -578,8 +548,7 @@ class PriorReviewState:
         for index, item in enumerate(carried_raw):
             if not isinstance(item, str):
                 raise ReviewContractError(
-                    "PriorReviewState.carried_forward_comment_ids"
-                    f"[{index}] must be a string"
+                    f"PriorReviewState.carried_forward_comment_ids[{index}] must be a string"
                 )
             carried_forward.append(item)
 
@@ -591,9 +560,7 @@ class PriorReviewState:
 
         generated_at_raw = payload.get("generated_at")
         if generated_at_raw is not None and not isinstance(generated_at_raw, str):
-            raise ReviewContractError(
-                "PriorReviewState.generated_at must be a string or null"
-            )
+            raise ReviewContractError("PriorReviewState.generated_at must be a string or null")
 
         notes_raw = payload.get("notes", [])
         if not isinstance(notes_raw, Sequence) or isinstance(notes_raw, (str, bytes)):
@@ -601,9 +568,7 @@ class PriorReviewState:
         notes: list[str] = []
         for index, item in enumerate(notes_raw):
             if not isinstance(item, str):
-                raise ReviewContractError(
-                    f"PriorReviewState.notes[{index}] must be a string"
-                )
+                raise ReviewContractError(f"PriorReviewState.notes[{index}] must be a string")
             notes.append(item)
 
         return cls(
@@ -622,9 +587,7 @@ class PriorReviewState:
         try:
             payload = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ReviewContractError(
-                f"PriorReviewState JSON decode failed: {exc}"
-            ) from exc
+            raise ReviewContractError(f"PriorReviewState JSON decode failed: {exc}") from exc
         if not isinstance(payload, Mapping):
             raise ReviewContractError("PriorReviewState JSON root must be an object")
         return cls.from_mapping(payload)

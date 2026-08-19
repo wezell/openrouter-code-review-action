@@ -333,7 +333,7 @@ def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, fake_codex),
+        model_client=cast(Any, fake_codex),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -409,7 +409,7 @@ def test_process_edit_command_surfaces_comment_context_warnings(monkeypatch, cap
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, fake_gh),
     )
 
@@ -479,7 +479,7 @@ def test_process_edit_command_prints_reply_failures(monkeypatch, capsys) -> None
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -557,7 +557,7 @@ def test_process_edit_command_skips_commit_when_no_agent_scoped_changes(monkeypa
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -634,7 +634,7 @@ def test_process_edit_command_commits_only_agent_scoped_paths(monkeypatch) -> No
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -711,7 +711,7 @@ def test_process_edit_command_uses_force_with_lease_for_rewritten_history(monkey
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=fake_gh,
     )
 
@@ -776,7 +776,7 @@ def test_process_edit_command_fails_fast_when_rebase_is_active(monkeypatch) -> N
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, fake_codex),
+        model_client=cast(Any, fake_codex),
         github_client=fake_gh,
     )
 
@@ -860,7 +860,7 @@ def test_process_edit_command_reports_force_with_lease_failures(monkeypatch) -> 
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=fake_gh,
     )
 
@@ -923,7 +923,7 @@ def test_edit_workflow_debug2_does_not_dump_full_prompt(
             mode="act",
             debug_level=2,
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -991,7 +991,7 @@ def test_process_edit_command_fails_when_ahead_probe_errors(monkeypatch) -> None
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=fake_gh,
     )
 
@@ -1095,7 +1095,7 @@ def test_process_edit_command_git_integration_commits_and_pushes(
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -1139,7 +1139,7 @@ def test_process_edit_command_git_integration_noop_preserves_branch(
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
@@ -1191,7 +1191,7 @@ def test_process_edit_command_git_integration_rewritten_history_uses_force_push(
             pr_number=1,
             mode="act",
         ),
-        codex_client=cast(Any, _FakeCodexClient()),
+        model_client=cast(Any, _FakeCodexClient()),
         github_client=cast(Any, _FakeGitHubClient()),
     )
 

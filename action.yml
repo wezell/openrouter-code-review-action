@@ -95,6 +95,7 @@ runs:
         GITHUB_REPOSITORY: ${{ github.repository }}
         RUNNER_TEMP: ${{ runner.temp }}
         CODEX_MODEL_INPUT: ${{ inputs.model }}
+        OPENROUTER_REVIEW_CONFIG: ${{ inputs.config_path }}
         GITHUB_ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
@@ -105,7 +106,9 @@ runs:
       id: review_codex_cache
       uses: actions/cache/restore@v4
       with:
-        path: ${{ steps.review_resume_state.outputs.codex_home }}
+        path: |-
+          ${{ steps.review_resume_state.outputs.codex_home }}
+          ${{ runner.temp }}/openrouter-review-threads
         key: ${{ steps.review_resume_state.outputs.restore_key }}
     - name: Install Python dependencies
       shell: bash
@@ -139,6 +142,9 @@ runs:
         # deltas reach the GitHub Actions live log as soon as the
         # OpenRouter SSE stream emits them.
         PYTHONUNBUFFERED: "1"
+        # Conversation threads for the OpenRouter agent loop live here so
+        # the cache steps can persist them across runs for resume.
+        OPENROUTER_THREAD_DIR: ${{ runner.temp }}/openrouter-review-threads
         CODEX_HOME: ${{ steps.review_resume_state.outputs.codex_home }}
         CODEX_REVIEW_PREVIOUS_HEAD_SHA: ${{ steps.review_resume_state.outputs.previous_reviewed_sha }}
         CODEX_REVIEW_CACHE_HIT: ${{ steps.review_codex_cache.outputs.cache-hit }}
@@ -153,5 +159,7 @@ runs:
       if: ${{ inputs.mode == 'review' && steps.run_codex_cli.outcome == 'success' && steps.review_resume_state.outputs.current_cache_key != '' && !(steps.review_codex_cache.outputs.cache-hit == 'true' && steps.review_resume_state.outputs.restore_key == steps.review_resume_state.outputs.current_cache_key) }}
       uses: actions/cache/save@v4
       with:
-        path: ${{ steps.review_resume_state.outputs.codex_home }}
+        path: |-
+          ${{ steps.review_resume_state.outputs.codex_home }}
+          ${{ runner.temp }}/openrouter-review-threads
         key: ${{ steps.review_resume_state.outputs.current_cache_key }}

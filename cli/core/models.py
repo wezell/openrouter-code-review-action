@@ -452,7 +452,7 @@ class ReviewRunResult:
 # emitted by the model. `REVIEW_OUTPUT_SCHEMA` describes the full review
 # run envelope (findings + carried_forward + overall summary).
 
-REVIEW_FINDING_LOCATION_SCHEMA: dict[str, object] = {
+REVIEW_FINDING_LOCATION_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "absolute_file_path": {"type": "string"},
@@ -471,7 +471,7 @@ REVIEW_FINDING_LOCATION_SCHEMA: dict[str, object] = {
 }
 
 
-REVIEW_FINDING_SCHEMA: dict[str, object] = {
+REVIEW_FINDING_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "title": {"type": "string"},
@@ -491,7 +491,7 @@ REVIEW_FINDING_SCHEMA: dict[str, object] = {
 }
 
 
-CARRIED_FORWARD_COMMENT_SCHEMA: dict[str, object] = {
+CARRIED_FORWARD_COMMENT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "comment_id": {"type": "string"},
@@ -502,7 +502,7 @@ CARRIED_FORWARD_COMMENT_SCHEMA: dict[str, object] = {
 }
 
 
-REVIEW_OUTPUT_SCHEMA: dict[str, object] = {
+REVIEW_OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "findings": {

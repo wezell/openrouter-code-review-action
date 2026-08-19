@@ -473,9 +473,7 @@ def test_dataset_coverage_splits_matched_from_unmatched():
     assert coverage["dataset_matched"] == 1
     assert coverage["by_label_total"] == {"TP": 2, "FP": 1}
     assert coverage["by_label_matched"] == {"TP": 1, "FP": 0}
-    assert coverage["dataset_unmatched_ids"] == sorted(
-        ["gt-001-tp-b", "gt-001-fp-a"]
-    )
+    assert coverage["dataset_unmatched_ids"] == sorted(["gt-001-tp-b", "gt-001-fp-a"])
 
 
 # ---------------------------------------------------------------------------
@@ -483,9 +481,7 @@ def test_dataset_coverage_splits_matched_from_unmatched():
 # ---------------------------------------------------------------------------
 
 
-def _write_codex_artifact(
-    runs_dir: Path, pr_id: str, payload: dict[str, Any]
-) -> None:
+def _write_codex_artifact(runs_dir: Path, pr_id: str, payload: dict[str, Any]) -> None:
     target = runs_dir / pr_id
     target.mkdir(parents=True, exist_ok=True)
     (target / "codex.json").write_text(
@@ -729,9 +725,7 @@ def test_check_scored_artifacts_detects_drift(tmp_path: Path):
         ),
         encoding="utf-8",
     )
-    drift = scorer.check_scored_artifacts(
-        [result], runs_dir=tmp_path, summary_path=summary_target
-    )
+    drift = scorer.check_scored_artifacts([result], runs_dir=tmp_path, summary_path=summary_target)
     assert drift, "drift list must not be empty after tampering"
     assert any("differs from rebuild" in d for d in drift)
 
@@ -756,9 +750,7 @@ def test_check_scored_artifacts_in_sync(tmp_path: Path):
         summary_path=summary_target,
         generated_at="2026-05-06T12:00:00Z",
     )
-    drift = scorer.check_scored_artifacts(
-        [result], runs_dir=tmp_path, summary_path=summary_target
-    )
+    drift = scorer.check_scored_artifacts([result], runs_dir=tmp_path, summary_path=summary_target)
     assert drift == []
 
 
@@ -775,9 +767,7 @@ def test_cli_check_mode_returns_zero_on_in_sync_state(monkeypatch, capsys, tmp_p
     monkeypatch.setattr(
         scorer,
         "_load_sample",
-        lambda path=None: [
-            scorer._SamplePR(id="sample-pr-001", head_sha="deadbeefcafe1234")
-        ],
+        lambda path=None: [scorer._SamplePR(id="sample-pr-001", head_sha="deadbeefcafe1234")],
     )
     monkeypatch.setattr(scorer, "load_dataset", lambda: _dataset([_make_labeled()]))
 
@@ -796,9 +786,7 @@ def test_cli_unknown_pr_id_exits_non_zero(monkeypatch, tmp_path):
     monkeypatch.setattr(
         scorer,
         "_load_sample",
-        lambda path=None: [
-            scorer._SamplePR(id="sample-pr-001", head_sha="deadbeefcafe1234")
-        ],
+        lambda path=None: [scorer._SamplePR(id="sample-pr-001", head_sha="deadbeefcafe1234")],
     )
     monkeypatch.setattr(scorer, "load_dataset", lambda: _dataset([_make_labeled()]))
 
@@ -828,6 +816,6 @@ def test_real_repo_score_all_runs_against_pending_captures():
     )
     # Every PR must still be cross-referenced to ground-truth coverage
     # so the summary stays meaningful before captures land.
-    assert all(
-        r.dataset_coverage["dataset_total"] >= 1 for r in results
-    ), "dataset coverage must surface ≥ 1 ground-truth entry per PR"
+    assert all(r.dataset_coverage["dataset_total"] >= 1 for r in results), (
+        "dataset coverage must surface ≥ 1 ground-truth entry per PR"
+    )

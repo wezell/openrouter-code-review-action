@@ -259,10 +259,7 @@ class ShaDeltaResolver:
         debug: Callable[[int, str], None] | None = None,
     ) -> None:
         if max_inline_diff_lines < 0:
-            raise ValueError(
-                "max_inline_diff_lines must be >= 0; "
-                f"got {max_inline_diff_lines!r}"
-            )
+            raise ValueError(f"max_inline_diff_lines must be >= 0; got {max_inline_diff_lines!r}")
         self.state_manager = state_manager
         self.git_probe: GitDeltaProbe = git_probe or DefaultGitDeltaProbe()
         self.max_inline_diff_lines = max_inline_diff_lines
@@ -345,9 +342,7 @@ class ShaDeltaResolver:
                 previous_reviewed_sha=current_key.reviewed_head_sha,
                 incremental_diff=None,
                 commit_shas=(),
-                reason=(
-                    "prior review state already keyed against the current HEAD"
-                ),
+                reason=("prior review state already keyed against the current HEAD"),
                 fallback_key=None,
             )
 
@@ -409,9 +404,7 @@ class ShaDeltaResolver:
         current_head_sha = current_key.reviewed_head_sha
 
         try:
-            is_ancestor = self.git_probe.is_ancestor(
-                previous_reviewed_sha, current_head_sha
-            )
+            is_ancestor = self.git_probe.is_ancestor(previous_reviewed_sha, current_head_sha)
         except subprocess.CalledProcessError as exc:
             reason = (
                 f"git ancestry probe failed for {previous_reviewed_sha}->"
@@ -527,9 +520,7 @@ class ShaDeltaResolver:
         return ShaDeltaResult(
             decision=SHA_DELTA_DECISION_FRESH_REVIEW,
             current_head_sha=current_key.reviewed_head_sha,
-            prior_state=PriorReviewState.empty(
-                current_key, generated_at=generated_at
-            ),
+            prior_state=PriorReviewState.empty(current_key, generated_at=generated_at),
             previous_reviewed_sha=None,
             incremental_diff=None,
             commit_shas=(),

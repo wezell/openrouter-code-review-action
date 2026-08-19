@@ -193,9 +193,7 @@ def fetch_pr_diff(pr: SamplePR) -> str:
 
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if not token:
-        raise RuntimeError(
-            "Cannot fetch diff: 'gh' CLI not on PATH and GITHUB_TOKEN unset"
-        )
+        raise RuntimeError("Cannot fetch diff: 'gh' CLI not on PATH and GITHUB_TOKEN unset")
     url = f"https://api.github.com/repos/{pr.repo}/pulls/{pr.number}"
     req = urllib.request.Request(
         url,
@@ -286,9 +284,7 @@ def _post_openrouter(api_key: str, payload: dict[str, Any]) -> dict[str, Any]:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"OpenRouter HTTP {exc.code}: {detail[:500]}"
-        ) from exc
+        raise RuntimeError(f"OpenRouter HTTP {exc.code}: {detail[:500]}") from exc
 
 
 def _extract_review_payload(api_response: dict[str, Any]) -> dict[str, Any]:
@@ -355,9 +351,7 @@ def replay_recorded_response(
     """
     api_response = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(api_response, dict):
-        raise ReviewContractError(
-            f"Replay file {path} did not contain a JSON object"
-        )
+        raise ReviewContractError(f"Replay file {path} did not contain a JSON object")
     review_payload = _extract_review_payload(api_response)
     review = validate_review_payload(review_payload)
     usage = api_response.get("usage") if isinstance(api_response, dict) else None
@@ -621,7 +615,9 @@ def _handle_pr(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawTextHelpFormatter
+    )
     parser.add_argument(
         "--sample",
         type=Path,
@@ -696,7 +692,9 @@ def main(argv: list[str] | None = None) -> int:
             api_key=api_key,
         )
         summary[status] = summary.get(status, 0) + 1
-        rel = artifact_path.relative_to(_REPO_ROOT) if artifact_path.is_absolute() else artifact_path
+        rel = (
+            artifact_path.relative_to(_REPO_ROOT) if artifact_path.is_absolute() else artifact_path
+        )
         print(f"  {pr.pr_id} [{status}] -> {rel}", flush=True)
 
     print("\nsummary: " + ", ".join(f"{k}={v}" for k, v in sorted(summary.items())))

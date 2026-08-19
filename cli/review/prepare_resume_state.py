@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from ..core.config import ReviewConfig
+from ..core.model_config import load_model_config
 from .dedupe import SUMMARY_MARKER
 from .resume_state import (
     build_review_resume_outputs,
@@ -55,6 +56,39 @@ def _fetch_issue_comments(
     return issue_comments
 
 
+def _resolve_cache_model_name() -> str:
+    """Resolve the model the cache key must be keyed on.
+
+    The cache key has to match the model the review run actually uses,
+    not the legacy ``model`` action input. Resolution mirrors
+    :meth:`cli.core.config.ReviewConfig.selected_model`:
+
+    * provider ``openai`` (legacy Codex SDK): the ``model`` action
+      input via ``CODEX_MODEL_INPUT``.
+    * provider ``openrouter`` (default): the in-repo model config file
+      (``.openrouter-review.yml`` or ``OPENROUTER_REVIEW_CONFIG``)
+      wins when it pins ``review.model``; otherwise the
+      ``OPENROUTER_REVIEW_MODEL`` env var; otherwise the default.
+
+    This keeps restore/save keys tracking the real model when a
+    consumer swaps models by editing the in-repo file.
+    """
+    provider = os.environ.get("CODEX_PROVIDER", "openrouter").strip() or "openrouter"
+    if provider == "openai":
+        return os.environ.get("CODEX_MODEL_INPUT", "").strip()
+
+    repo_root_value = os.environ.get("GITHUB_WORKSPACE", "").strip()
+    repo_root = Path(repo_root_value) if repo_root_value else None
+    file_config = load_model_config(
+        repo_root=repo_root,
+        config_path=os.environ.get("OPENROUTER_REVIEW_CONFIG", "").strip() or None,
+    )
+    if file_config.source_path is not None:
+        return file_config.review_model
+    env_model = os.environ.get("OPENROUTER_REVIEW_MODEL", "").strip()
+    return env_model or file_config.review_model
+
+
 def main() -> int:
     event_path = os.environ.get("GITHUB_EVENT_PATH", "").strip()
     github_output = os.environ.get("GITHUB_OUTPUT", "").strip()
@@ -64,7 +98,7 @@ def main() -> int:
     event = _load_event(event_path)
     pr_number = ReviewConfig.extract_pr_number_from_event(event)
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
-    model_name = os.environ.get("CODEX_MODEL_INPUT", "").strip()
+    model_name = _resolve_cache_model_name()
     runner_temp = os.environ.get("RUNNER_TEMP", "").strip()
     current_head_sha = extract_current_head_sha(event)
 

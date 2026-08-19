@@ -166,6 +166,22 @@ call time; `cached` and `disabled` skip the live web fetch.
 > is the supported route for all model calls. Migration drops direct vendor
 > SDKs entirely — see `seed.yaml` for the constraint set.
 
+## Agent Loop
+
+OpenRouter chat completions have no built-in agent runtime, so the action ships
+its own tool-calling loop. Every review/edit turn gives the model three tools:
+
+- `read_file` — read a repo file (with optional line ranges)
+- `write_file` — create/overwrite a repo file
+- `run_command` — run a shell command in the repo root (e.g. `git diff`)
+
+The loop runs until the model produces a final answer, with a 30-iteration cap.
+Sandbox parity with the legacy Codex client is preserved: review and act turns
+run with full access, and any future read-only turn would see the mutating
+tools disabled. Tool results feed back as `role: "tool"` messages, so the
+conversation (including tool traffic) is persisted for resume. Setting
+`CODEX_PROVIDER=openai` routes to the legacy Codex SDK client instead.
+
 ## What It Posts
 
 - **Inline comments** anchored to exact diff lines. If a line isn't in the

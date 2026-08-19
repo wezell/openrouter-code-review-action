@@ -112,7 +112,41 @@ def test_from_args_requires_openai_api_key_when_provider_is_openai(
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     with pytest.raises(ConfigurationError, match="Missing OPENAI_API_KEY"):
-        ReviewConfig.from_args(github_token="token", repository="owner/repo", pr_number=1)
+        ReviewConfig.from_args(
+            github_token="token",
+            repository="owner/repo",
+            pr_number=1,
+            model_provider="openai",
+        )
+
+
+def test_from_args_requires_openrouter_api_key_when_provider_is_openrouter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+
+    with pytest.raises(ConfigurationError, match="Missing OPENROUTER_API_KEY"):
+        ReviewConfig.from_args(
+            github_token="token",
+            repository="owner/repo",
+            pr_number=1,
+            model_provider="openrouter",
+        )
+
+
+def test_from_args_rejects_unknown_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+
+    with pytest.raises(ConfigurationError, match="Invalid model_provider"):
+        ReviewConfig.from_args(
+            github_token="token",
+            repository="owner/repo",
+            pr_number=1,
+            model_provider="bedrock",
+        )
 
 
 def test_from_environment_parses_allowed_commenter_associations(

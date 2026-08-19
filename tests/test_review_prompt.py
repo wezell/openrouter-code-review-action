@@ -38,7 +38,7 @@ def test_review_base_instructions_mark_repo_standard_as_authoritative() -> None:
     workflow = ReviewWorkflow(
         _make_review_config(),
         github_client=cast(Any, object()),
-        codex_client=cast(Any, object()),
+        model_client=cast(Any, object()),
     )
 
     instructions = workflow._build_review_base_instructions("dummy")
@@ -53,7 +53,7 @@ def test_review_base_instructions_do_not_duplicate_additional_prompt() -> None:
     workflow = ReviewWorkflow(
         config,
         github_client=cast(Any, object()),
-        codex_client=cast(Any, object()),
+        model_client=cast(Any, object()),
     )
 
     instructions = workflow._build_review_base_instructions("dummy")

@@ -162,9 +162,7 @@ class ReviewStateManager:
         can construct the manager without ever touching the store class
         directly.
         """
-        store = ReviewStateStore.from_runner_temp(
-            runner_temp, directory_name=directory_name
-        )
+        store = ReviewStateStore.from_runner_temp(runner_temp, directory_name=directory_name)
         return cls(store)
 
     @classmethod
@@ -219,10 +217,7 @@ class ReviewStateManager:
             )
 
         normalized_previous = _normalise_previous_sha(previous_head_sha)
-        if (
-            normalized_previous is not None
-            and normalized_previous != key.reviewed_head_sha
-        ):
+        if normalized_previous is not None and normalized_previous != key.reviewed_head_sha:
             fallback_key = key.with_sha(normalized_previous)
             fallback_state = self.store.load(fallback_key)
             if fallback_state is not None:

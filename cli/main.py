@@ -43,10 +43,11 @@ Examples:
   python -m cli.main --repo owner/repo --pr 123 --model gpt-4o --provider openai
 
 Environment Variables:
-  GITHUB_TOKEN        GitHub API token (required)
-  OPENAI_API_KEY      OpenAI API key (required for OpenAI provider)
-  DEBUG_CODEREVIEW    Debug level (0-2, default: 0)
-  DRY_RUN            Skip actual posting (1 for dry run)
+  GITHUB_TOKEN         GitHub API token (required)
+  OPENROUTER_API_KEY   OpenRouter API key (required for openrouter provider)
+  OPENAI_API_KEY       OpenAI API key (required for openai provider)
+  DEBUG_CODEREVIEW     Debug level (0-2, default: 0)
+  DRY_RUN              Skip actual posting (1 for dry run)
         """,
     )
 
@@ -81,9 +82,9 @@ Environment Variables:
     parser.add_argument(
         "--provider",
         dest="model_provider",
-        choices=["openai"],
-        default="openai",
-        help="Model provider (default: openai)",
+        choices=["openrouter", "openai"],
+        default="openrouter",
+        help="Model provider (default: openrouter)",
     )
     parser.add_argument(
         "--model",

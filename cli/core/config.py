@@ -89,7 +89,7 @@ class ReviewConfig:
     repository: str
     pr_number: int | None = None
     mode: str = "review"  # "review" or "act"
-    model_provider: str = "openai"
+    model_provider: str = "openrouter"
     openai_api_key: str = ""
     openrouter_api_key: str = ""
     model_name: str = "gpt-5.4"
@@ -172,9 +172,18 @@ class ReviewConfig:
                 "Must be 'disabled', 'cached', or 'live'"
             )
 
-        if self.model_provider == "openai":
+        if self.model_provider == "openrouter":
+            if not self.openrouter_api_key.strip():
+                raise ConfigurationError(
+                    "Missing OPENROUTER_API_KEY for model provider 'openrouter'"
+                )
+        elif self.model_provider == "openai":
             if not self.openai_api_key.strip():
                 raise ConfigurationError("Missing OPENAI_API_KEY for model provider 'openai'")
+        else:
+            raise ConfigurationError(
+                f"Invalid model_provider: {self.model_provider}. Must be 'openrouter' or 'openai'"
+            )
 
         associations = self.allowed_commenter_associations
         if not associations:
@@ -324,7 +333,7 @@ def _config_values_from_environment() -> _ReviewConfigValues:
         "repository": repository,
         "pr_number": pr_number,
         "mode": os.environ.get("CODEX_MODE", "review").strip(),
-        "model_provider": os.environ.get("CODEX_PROVIDER", "openai").strip(),
+        "model_provider": os.environ.get("CODEX_PROVIDER", "openrouter").strip(),
         "openai_api_key": openai_api_key,
         "openrouter_api_key": os.environ.get("OPENROUTER_API_KEY", "").strip(),
         "model_name": os.environ.get("CODEX_MODEL", "gpt-5.4").strip(),
