@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: dotbot autonomous review
-        uses: ./
+        uses: wezell/openrouter-code-review-action@70ba727c30a55b9d78fe65ccc9d131e139dea295
         with:
           mode: review
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}

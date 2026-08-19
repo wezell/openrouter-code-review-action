@@ -778,6 +778,13 @@ def test_review_action_and_workflow_use_expected_resume_guard_and_model() -> Non
     assert "mode: review" in review_workflow
     assert "mode: act" in act_workflow
     assert "model: deepseek/deepseek-v4-pro-0813" in review_workflow
+    # The action must be pinned to a trusted ref, never `./` executed from
+    # an untrusted PR-head checkout holding a write token (see the P0
+    # finding on dotbot-act.yml).
+    assert "        uses: ./\n" not in review_workflow
+    assert "        uses: ./\n" not in act_workflow
+    assert "wezell/openrouter-code-review-action@" in review_workflow
+    assert "wezell/openrouter-code-review-action@" in act_workflow
 
 
 def test_edit_workflow_helpers_cover_reply_formatting_and_context_normalization() -> None:

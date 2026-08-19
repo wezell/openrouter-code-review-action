@@ -34,10 +34,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # The agent must operate on the PR branch, but the *action code*
+          # must never come from that checkout: a /dotbot comment can fire on
+          # an untrusted fork/PR head, so `uses: ./` would execute
+          # attacker-controlled composite steps with a write token in
+          # .git/config. Pin the action to a trusted ref below instead.
           ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.issue.number) }}
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - name: dotbot autonomous edits
-        uses: ./
+        # Trusted main ref, NOT the PR-head checkout. Update this SHA on
+        # release; consider renovate-style bumping.
+        uses: wezell/openrouter-code-review-action@70ba727c30a55b9d78fe65ccc9d131e139dea295
         with:
           mode: act
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
