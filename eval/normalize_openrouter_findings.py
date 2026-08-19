@@ -105,9 +105,7 @@ _WRAPPER_REQUIRED_KEYS = (
 def _eval_id_to_fixture_id(eval_id: str) -> str:
     """``dotcms-core-35567`` → ``pr-35567`` (fixture-tree convention)."""
     if not eval_id.startswith("dotcms-core-"):
-        raise ValueError(
-            f"unexpected eval id {eval_id!r}; expected 'dotcms-core-<NUMBER>'"
-        )
+        raise ValueError(f"unexpected eval id {eval_id!r}; expected 'dotcms-core-<NUMBER>'")
     number = eval_id[len("dotcms-core-") :]
     if not number.isdigit():
         raise ValueError(f"unexpected eval id suffix {eval_id!r}")
@@ -122,9 +120,7 @@ def _load_openrouter_artifact(path: Path) -> dict[str, Any]:
     return data
 
 
-def _build_fixture_payload(
-    eval_artifact: Mapping[str, Any], fixture_id: str
-) -> dict[str, Any]:
+def _build_fixture_payload(eval_artifact: Mapping[str, Any], fixture_id: str) -> dict[str, Any]:
     """Translate the eval artifact into the fixture-tree wrapper.
 
     The wrapper shape mirrors §4 of ``eval/findings-schema.md``:
@@ -140,17 +136,13 @@ def _build_fixture_payload(
     """
     missing = [k for k in _WRAPPER_REQUIRED_KEYS if k not in eval_artifact]
     if missing:
-        raise SystemExit(
-            f"openrouter eval artifact missing required keys: {sorted(missing)}"
-        )
+        raise SystemExit(f"openrouter eval artifact missing required keys: {sorted(missing)}")
     payload: dict[str, Any] = dict(eval_artifact)
     payload["pr_id"] = fixture_id
 
     raw_rrr = payload.get("review_run_result")
     if raw_rrr is not None and not isinstance(raw_rrr, Mapping):
-        raise SystemExit(
-            "openrouter eval artifact 'review_run_result' must be an object or null"
-        )
+        raise SystemExit("openrouter eval artifact 'review_run_result' must be an object or null")
     payload["review_run_result"] = normalize_review_run_result(raw_rrr)
 
     eval_pr_id = (
@@ -177,9 +169,7 @@ def _fixture_path(fixture_id: str) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def normalize_one(
-    eval_dir: Path, *, check_only: bool
-) -> tuple[str, bool]:
+def normalize_one(eval_dir: Path, *, check_only: bool) -> tuple[str, bool]:
     """Normalize and mirror one ``eval/runs/<id>/openrouter.json``.
 
     Returns ``(fixture_id, changed)``. ``changed`` is true when the
@@ -286,8 +276,7 @@ def main(argv: list[str] | None = None) -> int:
         # baseline is captured asynchronously to schema work, and this
         # script must remain importable / runnable on a fresh checkout.
         print(
-            "[ok] no eval/runs/dotcms-core-*/openrouter.json found; "
-            "nothing to normalize",
+            "[ok] no eval/runs/dotcms-core-*/openrouter.json found; nothing to normalize",
             file=sys.stderr,
         )
         return 0
@@ -302,8 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.check:
         if drifted:
             print(
-                f"[fail] {len(drifted)} fixture(s) drifted: "
-                f"{', '.join(drifted)}",
+                f"[fail] {len(drifted)} fixture(s) drifted: {', '.join(drifted)}",
                 file=sys.stderr,
             )
             return 1
@@ -311,8 +299,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     print(
-        f"[ok] normalized {len(targets)} eval artifact(s); "
-        f"updated {len(written)}",
+        f"[ok] normalized {len(targets)} eval artifact(s); updated {len(written)}",
         file=sys.stderr,
     )
     return 0

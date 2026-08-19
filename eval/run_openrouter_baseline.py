@@ -220,10 +220,7 @@ def write_artifact(
                 if capture_status == "captured"
                 else None
             ),
-            "command": (
-                "python -m eval.run_openrouter_baseline "
-                f"--pr-id {pr.id}"
-            ),
+            "command": (f"python -m eval.run_openrouter_baseline --pr-id {pr.id}"),
             "notes": notes,
         },
         "review_run_result": review_run_result,
@@ -427,9 +424,7 @@ def _extract_review_run_result(stdout: str) -> dict[str, Any]:
         ):
             return obj
         idx = end
-    raise RuntimeError(
-        "could not locate a ReviewRunResult JSON envelope in CLI stdout"
-    )
+    raise RuntimeError("could not locate a ReviewRunResult JSON envelope in CLI stdout")
 
 
 def capture_one(
@@ -539,8 +534,7 @@ def _select(prs: Iterable[SamplePR], pr_ids: Sequence[str] | None) -> list[Sampl
     missing = [pid for pid in pr_ids if pid not in by_id]
     if missing:
         raise SystemExit(
-            f"unknown pr_id(s): {', '.join(missing)}. "
-            f"Known: {', '.join(sorted(by_id))}"
+            f"unknown pr_id(s): {', '.join(missing)}. Known: {', '.join(sorted(by_id))}"
         )
     return [by_id[pid] for pid in pr_ids]
 

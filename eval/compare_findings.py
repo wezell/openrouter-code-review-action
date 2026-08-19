@@ -81,7 +81,11 @@ from eval.overlap_score import (
     LINE_PROXIMITY_TOLERANCE,
     OverlapFinding,
     OverlapMatch,
+)
+from eval.overlap_score import (
     line_distance as _overlap_line_distance,
+)
+from eval.overlap_score import (
     match_findings as _overlap_match_findings,
 )
 
@@ -187,9 +191,7 @@ def _extract_severity(title: str, priority: int | None) -> str | None:
     return f"P{m.group('level')}"
 
 
-def _normalize_finding(
-    raw: Mapping[str, Any], *, side: str, raw_index: int
-) -> _Finding:
+def _normalize_finding(raw: Mapping[str, Any], *, side: str, raw_index: int) -> _Finding:
     code_location = raw.get("code_location") if isinstance(raw, Mapping) else None
     path: str | None = None
     line_start: int | None = None
@@ -235,9 +237,7 @@ def _normalize_finding(
     )
 
 
-def _extract_findings(
-    fixture: Mapping[str, Any] | None, *, side: str
-) -> list[_Finding]:
+def _extract_findings(fixture: Mapping[str, Any] | None, *, side: str) -> list[_Finding]:
     if fixture is None:
         return []
     rrr = fixture.get("review_run_result")
@@ -306,9 +306,7 @@ def _match_findings(
     by_codex_id = {c.finding_id: c for c in codex}
     by_or_id = {o.finding_id: o for o in openrouter}
 
-    result = _overlap_match_findings(
-        codex_overlap, or_overlap, tolerance=tolerance
-    )
+    result = _overlap_match_findings(codex_overlap, or_overlap, tolerance=tolerance)
 
     matches = [
         _Match(
@@ -437,9 +435,7 @@ def compare_pr(
     codex_findings = _extract_findings(codex_fixture, side="codex")
     or_findings = _extract_findings(or_fixture, side="openrouter")
 
-    matches, codex_only, or_only = _match_findings(
-        codex_findings, or_findings, tolerance=tolerance
-    )
+    matches, codex_only, or_only = _match_findings(codex_findings, or_findings, tolerance=tolerance)
 
     codex_status = _capture_status(codex_fixture)
     or_status = _capture_status(or_fixture)
@@ -450,9 +446,7 @@ def compare_pr(
         pr_id=pr_id,
         head_sha_baseline=codex_sha,
         head_sha_candidate=or_sha,
-        status=_classify_status(
-            codex_status, or_status, codex_sha=codex_sha, or_sha=or_sha
-        ),
+        status=_classify_status(codex_status, or_status, codex_sha=codex_sha, or_sha=or_sha),
         codex_status=codex_status,
         openrouter_status=or_status,
         codex_findings=codex_findings,
@@ -498,9 +492,7 @@ def _match_payload(m: _Match) -> dict[str, Any]:
     }
 
 
-def _delta_by_severity(
-    codex: Mapping[str, int], openrouter: Mapping[str, int]
-) -> dict[str, int]:
+def _delta_by_severity(codex: Mapping[str, int], openrouter: Mapping[str, int]) -> dict[str, int]:
     keys = sorted(set(codex) | set(openrouter))
     return {k: openrouter.get(k, 0) - codex.get(k, 0) for k in keys}
 
@@ -511,17 +503,13 @@ def _ratio(num: int, den: int) -> float | None:
     return round(num / den, 4)
 
 
-def _build_pr_report(
-    cmp: PRComparison, *, generated_at: str, tolerance: int
-) -> dict[str, Any]:
+def _build_pr_report(cmp: PRComparison, *, generated_at: str, tolerance: int) -> dict[str, Any]:
     codex_total = len(cmp.codex_findings)
     or_total = len(cmp.openrouter_findings)
     matched = len(cmp.matches)
     codex_only = len(cmp.codex_only)
     or_only = len(cmp.openrouter_only)
-    severity_match_count = sum(
-        1 for m in cmp.matches if _match_payload(m)["severity_match"]
-    )
+    severity_match_count = sum(1 for m in cmp.matches if _match_payload(m)["severity_match"])
     codex_by_sev = _by_severity(cmp.codex_findings)
     or_by_sev = _by_severity(cmp.openrouter_findings)
     delta_by_sev = _delta_by_severity(codex_by_sev, or_by_sev)
@@ -610,9 +598,7 @@ def _build_summary(
         codex_total = len(cmp.codex_findings)
         or_total = len(cmp.openrouter_findings)
         matched = len(cmp.matches)
-        sev_match = sum(
-            1 for m in cmp.matches if _match_payload(m)["severity_match"]
-        )
+        sev_match = sum(1 for m in cmp.matches if _match_payload(m)["severity_match"])
 
         totals["codex_findings_total"] += codex_total
         totals["openrouter_findings_total"] += or_total
@@ -708,22 +694,15 @@ def write_report(
     written: list[Path] = []
     for cmp in comparisons:
         path = _report_path(cmp.pr_id, report_root=report_root)
-        artifact = _build_pr_report(
-            cmp, generated_at=generated_at, tolerance=tolerance
-        )
+        artifact = _build_pr_report(cmp, generated_at=generated_at, tolerance=tolerance)
         _atomic_write(path, _serialize(artifact))
         written.append(path)
     summary_target = (
         summary_path
         if summary_path is not None
-        else (
-            (report_root if report_root is not None else REPORT_ROOT)
-            / "_summary.json"
-        )
+        else ((report_root if report_root is not None else REPORT_ROOT) / "_summary.json")
     )
-    summary = _build_summary(
-        comparisons, generated_at=generated_at, tolerance=tolerance
-    )
+    summary = _build_summary(comparisons, generated_at=generated_at, tolerance=tolerance)
     _atomic_write(summary_target, _serialize(summary))
     return written, summary_target
 
@@ -739,9 +718,7 @@ def check_report(
     drift: list[str] = []
     for cmp in comparisons:
         path = _report_path(cmp.pr_id, report_root=report_root)
-        fresh = _build_pr_report(
-            cmp, generated_at="<ignored-for-check>", tolerance=tolerance
-        )
+        fresh = _build_pr_report(cmp, generated_at="<ignored-for-check>", tolerance=tolerance)
         on_disk = _load_fixture(path)
         if on_disk is None:
             drift.append(f"{cmp.pr_id}: missing report at {_display_path(path)}")
@@ -751,10 +728,7 @@ def check_report(
     summary_target = (
         summary_path
         if summary_path is not None
-        else (
-            (report_root if report_root is not None else REPORT_ROOT)
-            / "_summary.json"
-        )
+        else ((report_root if report_root is not None else REPORT_ROOT) / "_summary.json")
     )
     fresh_summary = _build_summary(
         comparisons, generated_at="<ignored-for-check>", tolerance=tolerance
@@ -806,9 +780,7 @@ def compare_all(
     tolerance: int = LINE_PROXIMITY_TOLERANCE,
 ) -> list[PRComparison]:
     if pr_ids is None:
-        pr_ids = discover_pr_ids(
-            baseline_root=baseline_root, candidate_root=candidate_root
-        )
+        pr_ids = discover_pr_ids(baseline_root=baseline_root, candidate_root=candidate_root)
     return [
         compare_pr(
             pid,
@@ -849,10 +821,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--tolerance",
         type=int,
         default=LINE_PROXIMITY_TOLERANCE,
-        help=(
-            f"± lines tolerance for proximity matching "
-            f"(default: {LINE_PROXIMITY_TOLERANCE})."
-        ),
+        help=(f"± lines tolerance for proximity matching (default: {LINE_PROXIMITY_TOLERANCE})."),
     )
     args = parser.parse_args(argv)
 
@@ -892,9 +861,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"parity report in sync ({len(comparisons)} PRs)")
         return 0
 
-    written, summary_target = write_report(
-        comparisons, tolerance=args.tolerance
-    )
+    written, summary_target = write_report(comparisons, tolerance=args.tolerance)
     by_status: dict[str, int] = {}
     for cmp in comparisons:
         by_status[cmp.status] = by_status.get(cmp.status, 0) + 1

@@ -22,9 +22,7 @@ from typing import Any
 import pytest
 
 from cli.core.exceptions import ReviewContractError
-
 from eval import normalize_openrouter_findings as nrm
-
 
 # ---------------------------------------------------------------------------
 # Pure normalizer
@@ -96,7 +94,9 @@ def test_normalize_rejects_missing_envelope_key() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _wrap_artifact(rrr: dict[str, Any] | None, *, pr_id: str = "dotcms-core-99999") -> dict[str, Any]:
+def _wrap_artifact(
+    rrr: dict[str, Any] | None, *, pr_id: str = "dotcms-core-99999"
+) -> dict[str, Any]:
     return {
         "pr_id": pr_id,
         "run": "openrouter",
