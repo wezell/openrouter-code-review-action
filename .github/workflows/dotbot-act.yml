@@ -42,9 +42,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.issue.number) }}
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - name: dotbot autonomous edits
-        # Trusted main ref, NOT the PR-head checkout. Update this SHA on
-        # release; consider renovate-style bumping.
-        uses: wezell/openrouter-code-review-action@70ba727c30a55b9d78fe65ccc9d131e139dea295
+        # Trusted main ref, NOT the PR-head checkout. Update this SHA on each
+        # release (matches the v1/latest tag).
+        uses: wezell/openrouter-code-review-action@d68edbb67a3365b53b41d9f05406c084bf338295
         with:
           mode: act
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
