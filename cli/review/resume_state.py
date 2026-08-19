@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from codex.app_server.models import ThreadListResult
     from codex.protocol import types as protocol
 
-SUMMARY_METADATA_RE = re.compile(r"<!--\s*codex-review-meta\s+({.*?})\s*-->")
+SUMMARY_METADATA_RE = re.compile(r"<!--\s*dotbot-review-meta\s+({.*?})\s*-->")
 REVIEW_RESUME_CACHE_VERSION = "v1"
 MAX_INLINE_INCREMENTAL_DIFF_LINES = 500
 
@@ -24,7 +24,7 @@ def render_review_summary_metadata(reviewed_head_sha: str) -> str:
         ensure_ascii=True,
         separators=(",", ":"),
     )
-    return f"<!-- codex-review-meta {payload} -->"
+    return f"<!-- dotbot-review-meta {payload} -->"
 
 
 def parse_reviewed_head_sha(summary_body: str) -> str | None:
@@ -52,7 +52,7 @@ def compute_review_cache_key(
     sanitized_model_name = _sanitize_cache_component(model_name)
     sanitized_sha = _sanitize_cache_component(reviewed_head_sha)
     return (
-        f"codex-review-{REVIEW_RESUME_CACHE_VERSION}-"
+        f"dotbot-review-{REVIEW_RESUME_CACHE_VERSION}-"
         f"{sanitized_repository}-pr-{pr_number}-{sanitized_model_name}-{sanitized_sha}"
     )
 
@@ -90,7 +90,7 @@ def build_review_resume_outputs(
     current_head_sha: str,
     previous_reviewed_sha: str | None,
 ) -> dict[str, str]:
-    codex_home = str(Path(runner_temp or ".").resolve() / "codex-review-state")
+    codex_home = str(Path(runner_temp or ".").resolve() / "dotbot-review-state")
     restore_key = ""
     current_cache_key = ""
 
@@ -121,7 +121,7 @@ def load_latest_thread_id(codex_home: Path, cwd: Path) -> str:
     threads = _list_stored_threads(codex_home=codex_home, cwd=cwd)
     if not threads:
         raise ReviewResumeError(
-            "Resume cache restored but no Codex thread was found for "
+            "Resume cache restored but no review thread was found for "
             f"{cwd.resolve()} in {codex_home}"
         )
     latest_thread = max(threads, key=lambda thread: thread.updatedAt)

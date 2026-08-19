@@ -12,7 +12,7 @@ from codex.protocol import types as protocol
 
 from cli.clients.codex_client import CodexClient
 from cli.core.config import ReviewConfig
-from cli.core.exceptions import CodexExecutionError
+from cli.core.exceptions import DotBotExecutionError
 
 
 @dataclass
@@ -357,7 +357,7 @@ def test_execute_text_raises_on_thread_run_error(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr("cli.clients.codex_client.Codex", _FakeCodex)
     client = CodexClient(_make_config())
 
-    with pytest.raises(CodexExecutionError, match="boom"):
+    with pytest.raises(DotBotExecutionError, match="boom"):
         client.execute_text("prompt")
 
 
@@ -369,7 +369,7 @@ def test_execute_text_raises_on_failed_turn_event(
     monkeypatch.setattr("cli.clients.codex_client.Codex", _FakeCodex)
     client = CodexClient(_make_config())
 
-    with pytest.raises(CodexExecutionError, match="Codex error: bad"):
+    with pytest.raises(DotBotExecutionError, match="Codex error: bad"):
         client.execute_text("prompt")
 
 
@@ -381,7 +381,7 @@ def test_execute_text_raises_on_interrupted_turn_event(
     monkeypatch.setattr("cli.clients.codex_client.Codex", _FakeCodex)
     client = CodexClient(_make_config())
 
-    with pytest.raises(CodexExecutionError, match="Codex error: turn interrupted"):
+    with pytest.raises(DotBotExecutionError, match="Codex error: turn interrupted"):
         client.execute_text("prompt")
 
 
@@ -399,7 +399,7 @@ def test_execute_text_raises_on_parse_errors(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr("cli.clients.codex_client.Codex", _FakeCodex)
     client = CodexClient(_make_config())
 
-    with pytest.raises(CodexExecutionError, match="stream parsing failed"):
+    with pytest.raises(DotBotExecutionError, match="stream parsing failed"):
         client.execute_text("prompt")
 
 
@@ -461,7 +461,7 @@ def test_execute_structured_raises_when_schema_turn_emits_no_output(
     client = CodexClient(_make_config())
 
     with pytest.raises(
-        CodexExecutionError,
+        DotBotExecutionError,
         match="Codex did not return structured output on turn 2.",
     ):
         client.execute_structured(

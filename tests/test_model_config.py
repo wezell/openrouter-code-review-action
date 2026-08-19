@@ -190,7 +190,7 @@ def test_swap_act_model_is_single_file_edit(
 ) -> None:
     """Same contract for act mode — the in-repo file is the source of truth."""
 
-    monkeypatch.setenv("CODEX_MODE", "act")
+    monkeypatch.setenv("DOTBOT_MODE", "act")
     target = base_env / DEFAULT_CONFIG_PATH
 
     target.write_text("act:\n  model: anthropic/claude-opus-4.7\n", encoding="utf-8")

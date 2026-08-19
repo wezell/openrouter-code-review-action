@@ -44,7 +44,7 @@ from collections.abc import Callable, Iterable
 from typing import Any
 
 from ..core.config import ReviewConfig, make_debug
-from ..core.exceptions import CodexExecutionError, ConfigurationError
+from ..core.exceptions import ConfigurationError, DotBotExecutionError
 from ..core.models import build_openrouter_response_format
 from .openrouter_stream import OpenRouterStreamPrinter, StreamingResult
 from .openrouter_thread_store import OpenRouterThreadStore
@@ -127,7 +127,7 @@ class OpenRouterClient:
         self._save_thread(thread_id, messages, model_name=model_name)
 
         if not final_text.strip():
-            raise CodexExecutionError("OpenRouter did not return an agent message.")
+            raise DotBotExecutionError("OpenRouter did not return an agent message.")
         return final_text
 
     def execute_structured(
@@ -168,7 +168,7 @@ class OpenRouterClient:
         self._save_thread(thread_id, messages, model_name=model_name)
 
         if not content.strip():
-            raise CodexExecutionError("OpenRouter did not return structured output on turn 2.")
+            raise DotBotExecutionError("OpenRouter did not return structured output on turn 2.")
         return content
 
     # ------------------------------------------------------------------
@@ -272,10 +272,10 @@ class OpenRouterClient:
         response = self._request(payload)
         choices = response.get("choices")
         if not isinstance(choices, list) or not choices:
-            raise CodexExecutionError("OpenRouter response had no choices")
+            raise DotBotExecutionError("OpenRouter response had no choices")
         message = choices[0].get("message")
         if not isinstance(message, dict):
-            raise CodexExecutionError("OpenRouter response had no message")
+            raise DotBotExecutionError("OpenRouter response had no message")
         content = message.get("content")
         if not isinstance(content, str):
             return ""
@@ -290,7 +290,7 @@ class OpenRouterClient:
         if self._transport is not None:
             response = self._transport(payload)
             if not isinstance(response, dict):
-                raise CodexExecutionError("OpenRouter transport returned a non-object response")
+                raise DotBotExecutionError("OpenRouter transport returned a non-object response")
             return response
 
         body = json.dumps(payload).encode("utf-8")
@@ -305,11 +305,11 @@ class OpenRouterClient:
                 decoded = json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise CodexExecutionError(f"OpenRouter HTTP {exc.code}: {detail[:500]}") from exc
+            raise DotBotExecutionError(f"OpenRouter HTTP {exc.code}: {detail[:500]}") from exc
         except urllib.error.URLError as exc:
-            raise CodexExecutionError(f"OpenRouter request failed: {exc}") from exc
+            raise DotBotExecutionError(f"OpenRouter request failed: {exc}") from exc
         if not isinstance(decoded, dict):
-            raise CodexExecutionError("OpenRouter response was not a JSON object")
+            raise DotBotExecutionError("OpenRouter response was not a JSON object")
         return decoded
 
     def _request_stream(self, payload: dict[str, Any]) -> StreamingResult:
@@ -341,9 +341,9 @@ class OpenRouterClient:
                     yield chunk
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise CodexExecutionError(f"OpenRouter HTTP {exc.code}: {detail[:500]}") from exc
+            raise DotBotExecutionError(f"OpenRouter HTTP {exc.code}: {detail[:500]}") from exc
         except urllib.error.URLError as exc:
-            raise CodexExecutionError(f"OpenRouter request failed: {exc}") from exc
+            raise DotBotExecutionError(f"OpenRouter request failed: {exc}") from exc
 
     def _require_api_key(self) -> None:
         if not self.config.openrouter_api_key.strip():
@@ -428,13 +428,13 @@ def _result_from_response(response: dict[str, Any]) -> StreamingResult:
     """Convert a non-streaming chat-completion response to a StreamingResult."""
     choices = response.get("choices")
     if not isinstance(choices, list) or not choices:
-        raise CodexExecutionError("OpenRouter response had no choices")
+        raise DotBotExecutionError("OpenRouter response had no choices")
     choice = choices[0]
     if not isinstance(choice, dict):
-        raise CodexExecutionError("OpenRouter response choice was not an object")
+        raise DotBotExecutionError("OpenRouter response choice was not an object")
     message = choice.get("message")
     if not isinstance(message, dict):
-        raise CodexExecutionError("OpenRouter response had no message")
+        raise DotBotExecutionError("OpenRouter response had no message")
     content = message.get("content")
     text = content if isinstance(content, str) else ""
 

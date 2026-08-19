@@ -13,7 +13,7 @@ Pins these contracts:
 4. Macro metrics average per-PR P/R/F1 over ``ready`` PRs and report
    ``averaged_over_prs`` so a reviewer knows the sample size.
 5. Per-category breakdown emits the five severity buckets
-   (``P0..P3`` + ``unknown``), splits matched-pair counts by Codex vs
+   (``P0..P3`` + ``unknown``), splits matched-pair counts by dotbot vs
    OpenRouter side, and computes per-bucket precision/recall.
 6. ``check_aggregate`` is clean immediately after a write; mutating
    the on-disk file (or deleting it) surfaces a drift message.
@@ -196,7 +196,7 @@ def test_ready_pr_emits_micro_macro_and_per_category(
     runs_id = "dotcms-core-1"
     sha = "aa" * 20
     _write_registry(registry, [runs_id])
-    # Codex emits two findings; OpenRouter pairs one (matched, same
+    # dotbot emits two findings; OpenRouter pairs one (matched, same
     # P1 severity), misses the other, and adds a P3 false positive.
     _write_json(
         baseline / pr / "codex-findings.json",

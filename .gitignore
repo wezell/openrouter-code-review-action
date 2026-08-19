@@ -20,6 +20,7 @@ Thumbs.db
 dist/
 build/
 
-/.codex-context/
+/.dotbot-context/
 /.beads/
 /.desloppify/
+/.specstory/

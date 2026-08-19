@@ -480,7 +480,7 @@ class TestCLIAggregateMath:
         tmp_path: Path,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        # One PR ready, one PR with only the Codex side captured. The
+        # One PR ready, one PR with only the dotbot side captured. The
         # aggregate must compute metrics from the ready PR alone — the
         # pending PR contributes counts but not pooled precision/recall.
         baseline = tmp_path / "baseline"
@@ -512,7 +512,7 @@ class TestCLIAggregateMath:
             codex_findings=[_finding(path="foo.py", start=1)],
             openrouter_findings=[_finding(path="foo.py", start=1)],
         )
-        # PR 8: only Codex side captured.
+        # PR 8: only dotbot side captured.
         _write_json(
             baseline / "pr-8" / "codex-findings.json",
             _wrapper(

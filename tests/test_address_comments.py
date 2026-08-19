@@ -31,21 +31,21 @@ def _make_ep() -> EditWorkflow:
 
 def test_intent_detection_variants() -> None:
     should_match = [
-        "/codex address comments in the PR",
-        "/codex please fix the comments",
-        "/codex resolve review threads",
+        "/dotbot address comments in the PR",
+        "/dotbot please fix the comments",
+        "/dotbot resolve review threads",
     ]
     for s in should_match:
         assert _wants_fix_unresolved(s)
 
     should_not = [
-        "/codex do not address comments yet",
-        "/codex don't fix comments",
-        "/codex address performance issues",
-        "/codex fix docs",
-        "/codex handle comments",  # no longer matched by simplified verbs
-        "/codex deal with feedback",  # no longer matched by simplified verbs
-        "/codex clean up comments",  # no longer matched by simplified verbs
+        "/dotbot do not address comments yet",
+        "/dotbot don't fix comments",
+        "/dotbot address performance issues",
+        "/dotbot fix docs",
+        "/dotbot handle comments",  # no longer matched by simplified verbs
+        "/dotbot deal with feedback",  # no longer matched by simplified verbs
+        "/dotbot clean up comments",  # no longer matched by simplified verbs
     ]
     for s in should_not:
         assert not _wants_fix_unresolved(s)
@@ -257,10 +257,37 @@ def test_review_summary_mentions_address_comments_tip() -> None:
         ),
         ReviewPostingOutcome.empty(0),
         reviewed_head_sha="deadbeef",
+        model="anthropic/claude-opus-4.7",
+        reasoning_effort="medium",
     )
 
     assert SUMMARY_TIP in summary
-    assert "/codex address comments" in summary
+    assert "/dotbot address comments" in summary
+    assert "<sub>reviewed by dotbot · anthropic/claude-opus-4.7 · medium</sub>" in summary
+
+
+def test_review_summary_footer_reports_model_and_effort() -> None:
+    summary = _build_review_summary(
+        ReviewRunResult(
+            overall_correctness="patch is correct",
+            overall_explanation="",
+            overall_confidence_score=None,
+            findings=[],
+            carried_forward=[],
+        ),
+        ReviewSummary(
+            overall_correctness="patch is correct",
+            current_findings_count=0,
+            carried_forward_count=0,
+            active_findings_count=0,
+        ),
+        ReviewPostingOutcome.empty(0),
+        reviewed_head_sha="deadbeef",
+        model="openai/gpt-5",
+        reasoning_effort="high",
+    )
+
+    assert "<sub>reviewed by dotbot · openai/gpt-5 · high</sub>" in summary
 
 
 def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
@@ -341,9 +368,9 @@ def test_process_edit_command_fails_on_thread_fetch_errors(monkeypatch) -> None:
         id=123,
         event_name="issue_comment",
         author="octocat",
-        body="/codex address comments",
+        body="/dotbot address comments",
     )
-    rc = ep.process_edit_command("/codex address comments", 1, comment_ctx)
+    rc = ep.process_edit_command("/dotbot address comments", 1, comment_ctx)
     assert rc == 2
     assert pr._iss.comments and "Failed to retrieve review threads;" in pr._iss.comments[0]  # type: ignore[attr-defined]
     assert fake_codex.prompts == []
@@ -417,9 +444,9 @@ def test_process_edit_command_surfaces_comment_context_warnings(monkeypatch, cap
         id=123,
         event_name="issue_comment",
         author="octocat",
-        body="/codex fix docs",
+        body="/dotbot fix docs",
     )
-    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx)
+    rc = workflow.process_edit_command("/dotbot fix docs", 1, comment_ctx)
 
     err = capsys.readouterr().err
     assert rc == 0
@@ -487,9 +514,9 @@ def test_process_edit_command_prints_reply_failures(monkeypatch, capsys) -> None
         id=123,
         event_name="issue_comment",
         author="octocat",
-        body="/codex fix docs",
+        body="/dotbot fix docs",
     )
-    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx)
+    rc = workflow.process_edit_command("/dotbot fix docs", 1, comment_ctx)
 
     err = capsys.readouterr().err
     assert rc == 0
@@ -561,7 +588,7 @@ def test_process_edit_command_skips_commit_when_no_agent_scoped_changes(monkeypa
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
-    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot fix docs", 1, comment_ctx=None)
     assert rc == 0
 
 
@@ -638,7 +665,7 @@ def test_process_edit_command_commits_only_agent_scoped_paths(monkeypatch) -> No
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
-    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot fix docs", 1, comment_ctx=None)
 
     assert rc == 0
     assert committed == [["a.py", "b.py"]]
@@ -715,7 +742,7 @@ def test_process_edit_command_uses_force_with_lease_for_rewritten_history(monkey
         github_client=fake_gh,
     )
 
-    rc = workflow.process_edit_command("/codex rebase branch", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot rebase branch", 1, comment_ctx=None)
 
     assert rc == 0
     assert force_push_calls == [("feature", "remote-head")]
@@ -780,7 +807,7 @@ def test_process_edit_command_fails_fast_when_rebase_is_active(monkeypatch) -> N
         github_client=fake_gh,
     )
 
-    rc = workflow.process_edit_command("/codex rebase onto main", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot rebase onto main", 1, comment_ctx=None)
 
     assert rc == 2
     assert fake_gh.replies == []
@@ -864,7 +891,7 @@ def test_process_edit_command_reports_force_with_lease_failures(monkeypatch) -> 
         github_client=fake_gh,
     )
 
-    rc = workflow.process_edit_command("/codex rebase and push", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot rebase and push", 1, comment_ctx=None)
 
     assert rc == 2
     assert fake_gh.replies == []
@@ -927,7 +954,7 @@ def test_edit_workflow_debug2_does_not_dump_full_prompt(
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
-    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot fix docs", 1, comment_ctx=None)
 
     err = capsys.readouterr().err
     assert rc == 0
@@ -995,7 +1022,7 @@ def test_process_edit_command_fails_when_ahead_probe_errors(monkeypatch) -> None
         github_client=fake_gh,
     )
 
-    rc = workflow.process_edit_command("/codex fix docs", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot fix docs", 1, comment_ctx=None)
 
     assert rc == 2
     assert fake_gh.replies == []
@@ -1099,7 +1126,7 @@ def test_process_edit_command_git_integration_commits_and_pushes(
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
-    rc = workflow.process_edit_command("/codex apply integration change", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot apply integration change", 1, comment_ctx=None)
 
     local_head = _run_git(worktree, "rev-parse", "HEAD")
     remote_after = _run_git(worktree, "rev-parse", "origin/feature/integration")
@@ -1143,7 +1170,7 @@ def test_process_edit_command_git_integration_noop_preserves_branch(
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
-    rc = workflow.process_edit_command("/codex noop", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot noop", 1, comment_ctx=None)
 
     local_head = _run_git(worktree, "rev-parse", "HEAD")
     remote_after = _run_git(worktree, "rev-parse", "origin/feature/integration")
@@ -1195,7 +1222,7 @@ def test_process_edit_command_git_integration_rewritten_history_uses_force_push(
         github_client=cast(Any, _FakeGitHubClient()),
     )
 
-    rc = workflow.process_edit_command("/codex rewrite", 1, comment_ctx=None)
+    rc = workflow.process_edit_command("/dotbot rewrite", 1, comment_ctx=None)
 
     local_head = _run_git(worktree, "rev-parse", "HEAD")
     remote_after = _run_git(worktree, "rev-parse", "origin/feature/integration")

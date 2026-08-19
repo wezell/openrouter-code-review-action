@@ -155,7 +155,7 @@ def test_from_environment_parses_allowed_commenter_associations(
     monkeypatch.setenv("GITHUB_TOKEN", "token")
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("CODEX_ALLOWED_COMMENTER_ASSOCIATIONS", "owner, collaborator")
+    monkeypatch.setenv("DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS", "owner, collaborator")
     monkeypatch.setenv("PR_NUMBER", "1")
 
     config = ReviewConfig.from_environment()
@@ -164,7 +164,7 @@ def test_from_environment_parses_allowed_commenter_associations(
 
 
 def test_from_args_rejects_invalid_allowed_commenter_associations() -> None:
-    with pytest.raises(ConfigurationError, match="Invalid CODEX_ALLOWED_COMMENTER_ASSOCIATIONS"):
+    with pytest.raises(ConfigurationError, match="Invalid DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS"):
         ReviewConfig.from_args(
             github_token="token",
             repository="owner/repo",
@@ -199,4 +199,4 @@ def test_resolved_repo_root_and_context_dir_defaults(
     config = ReviewConfig(github_token="token", repository="owner/repo", context_dir_name="")
 
     assert config.resolved_repo_root == tmp_path.resolve()
-    assert config.resolved_context_dir_name == ".codex-context"
+    assert config.resolved_context_dir_name == ".dotbot-context"

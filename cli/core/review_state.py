@@ -40,10 +40,10 @@ Why ``schema_version`` is a string instead of an int? Because future
 migrations may want named tags (``"v1.1"``, ``"v2-pre"``) and pinning to a
 string up front avoids a downstream rewrite.
 
-Why ``openrouter-review-v1`` and not the legacy ``codex-review-v1``?
+Why ``openrouter-review-v1`` and not the legacy ``dotbot-review-v1``?
 Cache keys are also the GitHub Actions cache-restore keys; flipping the
 prefix gives the new action a clean cache namespace and guarantees a
-post-Codex run cannot accidentally pick up a stale Codex thread cache.
+post-migration run cannot accidentally pick up a stale review thread cache.
 """
 
 from __future__ import annotations
@@ -66,12 +66,12 @@ from .exceptions import ReviewContractError
 REVIEW_STATE_SCHEMA_VERSION = "v1"
 
 #: Cache-key prefix for the new OpenRouter-routed action. Distinct from the
-#: legacy ``codex-review-v1`` prefix so a post-migration run cannot read
-#: stale Codex thread state.
+#: legacy resume-state prefix so a post-migration run cannot read
+#: stale thread state.
 OPENROUTER_REVIEW_CACHE_PREFIX = "openrouter-review-v1"
 
 #: Marker prepended to the summary issue comment so future runs can find
-#: it via a substring scan. Replaces ``"Codex Autonomous Review:"``.
+#: it via a substring scan. Replaces ``"dotbot code review:"``.
 OPENROUTER_REVIEW_SUMMARY_MARKER = "OpenRouter Code Review:"
 
 #: HTML-comment metadata block embedded inside the summary comment body. The

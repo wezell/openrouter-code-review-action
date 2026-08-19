@@ -193,8 +193,8 @@ class ReviewFinding:
 
 
 @dataclass(frozen=True)
-class PriorCodexReviewComment:
-    """Unresolved Codex-authored review thread comment reused on reruns."""
+class PriorDotBotReviewComment:
+    """Unresolved dotbot-authored review thread comment reused on reruns."""
 
     id: str
     thread_id: str
@@ -207,7 +207,7 @@ class PriorCodexReviewComment:
 
 @dataclass(frozen=True)
 class CarriedForwardReviewComment:
-    """Prior Codex review comment re-adjudicated as still applicable."""
+    """Prior review comment re-adjudicated as still applicable."""
 
     comment_id: str
     current_evidence: str

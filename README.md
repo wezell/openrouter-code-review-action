@@ -1,14 +1,14 @@
 # OpenRouter Code Review Action (Review + Act)
 
 Run an OpenRouter-routed model to review pull requests and, on demand, make
-autonomous edits driven by `/codex` comments. Review path uses direct
+autonomous edits driven by `/dotbot` comments. Review path uses direct
 OpenRouter chat completions with schema-enforced JSON output; Act path shells
 out to [aider](https://aider.chat) so models and providers can be swapped
 quickly when pricing or quality changes.
 
 - **Review**: posts precise inline review comments and a PR-level summary. When
   there are no findings, only the summary is posted.
-- **Act**: applies focused edits when trusted users comment `/codex`; commits
+- **Act**: applies focused edits when trusted users comment `/dotbot`; commits
   and pushes to the PR branch via aider.
 
 > **Status — work in progress.** This action is mid-migration from the legacy
@@ -43,9 +43,9 @@ jobs:
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
 ```
 
-## Act on `/codex` Comments
+## Act on `/dotbot` Comments
 
-When a trusted user comments `/codex <instructions>` on a PR, the action checks
+When a trusted user comments `/dotbot <instructions>` on a PR, the action checks
 out the branch, runs aider against the configured `act.model`, and pushes the
 result. Give aider a working environment so it can build/test before pushing.
 
@@ -63,16 +63,16 @@ concurrency:
   cancel-in-progress: false
 jobs:
   act:
-    name: Act on /codex comments
+    name: Act on /dotbot comments
     if: >-
       (
         (
           github.event_name == 'issue_comment' &&
-          startsWith(github.event.comment.body, '/codex') &&
+          startsWith(github.event.comment.body, '/dotbot') &&
           github.event.issue.pull_request
         ) || (
           github.event_name == 'pull_request_review_comment' &&
-          startsWith(github.event.comment.body, '/codex')
+          startsWith(github.event.comment.body, '/dotbot')
         )
       ) &&
       github.actor != 'dependabot[bot]'
@@ -99,11 +99,11 @@ jobs:
           allowed_commenter_associations: MEMBER,OWNER,COLLABORATOR
 ```
 
-### `/codex` Commands
+### `/dotbot` Commands
 
-- **`/codex <instructions>`** — apply minimal diffs matching the instructions.
-- Bare **`/codex`** is ignored; include explicit instructions after the command.
-- **`/codex address comments`** (or natural variants like "please fix the
+- **`/dotbot <instructions>`** — apply minimal diffs matching the instructions.
+- Bare **`/dotbot`** is ignored; include explicit instructions after the command.
+- **`/dotbot address comments`** (or natural variants like "please fix the
   review comments") — address unresolved review threads. Only unresolved
   threads are considered; resolved threads are ignored.
 
@@ -180,7 +180,7 @@ Sandbox parity with the legacy Codex client is preserved: review and act turns
 run with full access, and any future read-only turn would see the mutating
 tools disabled. Tool results feed back as `role: "tool"` messages, so the
 conversation (including tool traffic) is persisted for resume. Setting
-`CODEX_PROVIDER=openai` routes to the legacy Codex SDK client instead.
+`DOTBOT_PROVIDER=openai` routes to the legacy Codex SDK client instead.
 
 ## What It Posts
 

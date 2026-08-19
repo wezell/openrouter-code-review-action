@@ -44,7 +44,7 @@ from cli.core.review_state import (
 
 
 def test_module_constants_use_openrouter_namespace() -> None:
-    # The new namespace must be distinct from the legacy "codex-review"
+    # The new namespace must be distinct from the legacy "dotbot-review"
     # prefix; the cache restore-key boundary depends on it.
     assert OPENROUTER_REVIEW_CACHE_PREFIX == "openrouter-review-v1"
     assert OPENROUTER_REVIEW_SUMMARY_MARKER.startswith("OpenRouter")
@@ -74,7 +74,7 @@ def test_summary_metadata_uses_openrouter_marker_in_html_comment() -> None:
     # Must use a marker distinct from the codex one so old and new
     # summary comments cannot be confused for each other.
     assert "openrouter-review-meta" in rendered
-    assert "codex-review-meta" not in rendered
+    assert "dotbot-review-meta" not in rendered
 
 
 def test_parse_reviewed_head_sha_returns_none_on_malformed_payloads() -> None:

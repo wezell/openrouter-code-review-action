@@ -234,11 +234,11 @@ def test_git_commit_paths_commits_when_staged_changes_exist(
 
     monkeypatch.setattr(git_ops, "_run_git", _fake_run_git)
 
-    assert git_ops.git_commit_paths("Codex edit: test", ["a.py"]) is True
+    assert git_ops.git_commit_paths("dotbot edit: test", ["a.py"]) is True
     assert calls == [
         (["add", "--", "a.py"], True),
         (["diff", "--cached", "--quiet"], False),
-        (["commit", "-m", "Codex edit: test"], True),
+        (["commit", "-m", "dotbot edit: test"], True),
     ]
 
 
@@ -263,7 +263,7 @@ def test_git_commit_paths_raises_when_staged_check_errors(
     monkeypatch.setattr(git_ops, "_run_git", _fake_run_git)
 
     with pytest.raises(subprocess.CalledProcessError) as exc_info:
-        git_ops.git_commit_paths("Codex edit: test", ["a.py"])
+        git_ops.git_commit_paths("dotbot edit: test", ["a.py"])
     assert exc_info.value.returncode == 2
     assert exc_info.value.stderr == "fatal"
 

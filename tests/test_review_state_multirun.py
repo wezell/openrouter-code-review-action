@@ -721,8 +721,8 @@ def test_iter_states_reports_only_openrouter_prefixed_files(
     manager = _new_manager(runner)
     manager.record_review_run(_key("sha1"))
 
-    # Drop a stray legacy codex-review file in the same directory.
-    legacy = manager.store.base_dir / "codex-review-v1-old-record.json"
+    # Drop a stray legacy dotbot-review file in the same directory.
+    legacy = manager.store.base_dir / "dotbot-review-v1-old-record.json"
     legacy.write_text(json.dumps({"schema_version": "v1"}), encoding="utf-8")
 
     # Drop an unrelated scratch file.

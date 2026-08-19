@@ -36,7 +36,7 @@ def test_build_edit_prompt_includes_git_ownership_completion_rules() -> None:
     )
     prompt = build_edit_prompt(
         config=config,
-        command_text="/codex update README wording",
+        command_text="/dotbot update README wording",
         pr=cast(Any, _PR()),
         comment_context_block="",
         unresolved_block="",

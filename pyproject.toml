@@ -1,8 +1,8 @@
 [project]
 # Minimal project metadata for uv; this is not published.
-name = "codex-review-action"
+name = "dotbot-code-review-action"
 version = "0.0.0"
-description = "GitHub Action for Codex autonomous PR reviews and edits"
+description = "GitHub Action for dotbot autonomous PR reviews and edits"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -198,7 +198,7 @@ class TestNonMatchable:
 
 class TestGreedyAssignment:
     def test_each_finding_used_at_most_once(self):
-        # Two Codex findings within tolerance of one OpenRouter finding.
+        # Two dotbot findings within tolerance of one OpenRouter finding.
         # Only the closer pair should win; the farther one becomes
         # codex_only.
         c1 = _f("c.f0001", start=10, end=10)  # distance 0 to o.f0001
@@ -262,7 +262,7 @@ class TestDeterminism:
 
     def test_tie_break_by_codex_id_then_openrouter_id(self):
         # Two equidistant pairs sharing one OpenRouter finding —
-        # the lexicographically first Codex id should win.
+        # the lexicographically first dotbot id should win.
         # c.f0002 sorts after c.f0001, both at distance 0.
         c1 = _f("c.f0001", start=10, end=10)
         c2 = _f("c.f0002", start=10, end=10)
@@ -274,7 +274,7 @@ class TestDeterminism:
     def test_severity_does_not_affect_tie_break(self):
         # Spec §5 / §6.3: severity is intentionally NOT in the sort
         # key. Two equidistant OpenRouter findings, one severity-aligned
-        # with Codex and one not, must resolve by finding_id alone.
+        # with dotbot and one not, must resolve by finding_id alone.
         c = _f("c.f0001", start=10, end=10, severity="P0")
         # ``or.f0001`` is severity-mismatched but has the lower id.
         # ``or.f0002`` matches Codex's severity. Tie-break must pick

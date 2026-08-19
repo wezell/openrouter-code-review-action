@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 
-class CodexReviewError(Exception):
-    """Base exception for codex review operations."""
+class DotBotReviewError(Exception):
+    """Base exception for dotbot review operations."""
 
 
-class GitHubAPIError(CodexReviewError):
+class GitHubAPIError(DotBotReviewError):
     """GitHub API related errors."""
 
     def __init__(self, message: str, status_code: int | None = None) -> None:
@@ -13,25 +13,25 @@ class GitHubAPIError(CodexReviewError):
         self.status_code = status_code
 
 
-class ConfigurationError(CodexReviewError):
+class ConfigurationError(DotBotReviewError):
     """Configuration validation errors."""
 
 
-class PatchParsingError(CodexReviewError):
+class PatchParsingError(DotBotReviewError):
     """Patch parsing related errors."""
 
 
-class CodexExecutionError(CodexReviewError):
-    """Codex execution related errors."""
+class DotBotExecutionError(DotBotReviewError):
+    """Model execution related errors."""
 
 
-class PromptError(CodexReviewError):
+class PromptError(DotBotReviewError):
     """Prompt composition or loading errors."""
 
 
-class ReviewContractError(CodexReviewError):
+class ReviewContractError(DotBotReviewError):
     """Structured review payload or metadata contract violations."""
 
 
-class ReviewResumeError(CodexReviewError):
+class ReviewResumeError(DotBotReviewError):
     """Review resume invariant or infrastructure failures."""

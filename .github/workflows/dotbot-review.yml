@@ -1,4 +1,4 @@
-name: Codex Autonomous Code Review
+name: dotbot code review
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ on:
     types: [created]
 
 concurrency:
-  group: codex-review-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
+  group: dotbot-review-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Codex autonomous review
+      - name: dotbot autonomous review
         uses: ./
         with:
           mode: review
@@ -34,16 +34,16 @@ jobs:
           debug_level: 1
 
   act:
-    name: Act on /codex comments
+    name: Act on /dotbot comments
     if: >-
       (
         (
           github.event_name == 'issue_comment' &&
-          startsWith(github.event.comment.body, '/codex') &&
+          startsWith(github.event.comment.body, '/dotbot') &&
           github.event.issue.pull_request
         ) || (
           github.event_name == 'pull_request_review_comment' &&
-          startsWith(github.event.comment.body, '/codex')
+          startsWith(github.event.comment.body, '/dotbot')
         )
       ) &&
       github.actor != 'dependabot[bot]'
@@ -56,7 +56,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Codex autonomous edits
+      - name: dotbot autonomous edits
         uses: ./
         with:
           mode: act

@@ -64,7 +64,7 @@ def _resolve_cache_model_name() -> str:
     :meth:`cli.core.config.ReviewConfig.selected_model`:
 
     * provider ``openai`` (legacy Codex SDK): the ``model`` action
-      input via ``CODEX_MODEL_INPUT``.
+      input via ``DOTBOT_MODEL_INPUT``.
     * provider ``openrouter`` (default): the in-repo model config file
       (``.openrouter-review.yml`` or ``OPENROUTER_REVIEW_CONFIG``)
       wins when it pins ``review.model``; otherwise the
@@ -73,9 +73,9 @@ def _resolve_cache_model_name() -> str:
     This keeps restore/save keys tracking the real model when a
     consumer swaps models by editing the in-repo file.
     """
-    provider = os.environ.get("CODEX_PROVIDER", "openrouter").strip() or "openrouter"
+    provider = os.environ.get("DOTBOT_PROVIDER", "openrouter").strip() or "openrouter"
     if provider == "openai":
-        return os.environ.get("CODEX_MODEL_INPUT", "").strip()
+        return os.environ.get("DOTBOT_MODEL_INPUT", "").strip()
 
     repo_root_value = os.environ.get("GITHUB_WORKSPACE", "").strip()
     repo_root = Path(repo_root_value) if repo_root_value else None
