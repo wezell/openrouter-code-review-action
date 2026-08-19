@@ -964,7 +964,7 @@ def test_process_review_resumes_openrouter_thread_from_thread_store(
         ],
         repository="owner/repo",
         pr_number=7,
-        model="anthropic/claude-opus-4.7",
+        model="deepseek/deepseek-v4-pro-0813",
     )
     prior_summary = _FakeIssueComment(
         (f"{SUMMARY_MARKER}\n{render_review_summary_metadata('prev-sha')}\nold summary"),

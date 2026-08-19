@@ -5,7 +5,7 @@ edit to the in-repo config file." They assert that:
 
 * Editing only the YAML file flips ``ReviewConfig.selected_model`` for both
   modes — no Python code changes, no action input changes.
-* Defaults (``anthropic/claude-opus-4.7``) apply when the file is absent.
+* Defaults (``deepseek/deepseek-v4-pro-0813`` review / ``anthropic/claude-opus-4.7`` act) apply when the file is absent.
 * Malformed files surface a ``ConfigurationError`` instead of silently using
   the defaults.
 * Explicit ``from_args`` overrides still win over the file (so a workflow can

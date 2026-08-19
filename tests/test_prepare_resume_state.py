@@ -54,7 +54,7 @@ def test_openrouter_provider_defaults_without_config_or_env(
     monkeypatch.delenv("OPENROUTER_REVIEW_CONFIG", raising=False)
     monkeypatch.delenv("OPENROUTER_REVIEW_MODEL", raising=False)
 
-    assert _resolve_cache_model_name() == "anthropic/claude-opus-4.7"
+    assert _resolve_cache_model_name() == "deepseek/deepseek-v4-pro-0813"
 
 
 def test_openrouter_provider_honors_config_path_override(

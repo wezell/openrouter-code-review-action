@@ -117,7 +117,7 @@ action-input change required.
 ```yaml
 # .openrouter-review.yml
 review:
-  model: anthropic/claude-opus-4.7    # change this line to swap review model
+  model: deepseek/deepseek-v4-pro-0813    # change this line to swap review model
   reasoning_effort: medium            # optional — minimal | low | medium | high
   web_search_mode: live               # optional — disabled | cached | live
 
@@ -126,7 +126,8 @@ act:
   reasoning_effort: medium
 ```
 
-The defaults are `anthropic/claude-opus-4.7` for both modes. To pin a different
+The defaults are `deepseek/deepseek-v4-pro-0813` for review mode and
+`anthropic/claude-opus-4.7` for act mode. To pin a different
 provider — e.g. `openai/gpt-5.4`, `google/gemini-2.5-pro`,
 `anthropic/claude-sonnet-4.5` — change the slug on the matching `model:` line
 and commit. The next run uses the new model.
@@ -147,7 +148,7 @@ call time; `cached` and `disabled` skip the live web fetch.
 | `config_path` | Path to the in-repo model config file | `.openrouter-review.yml` |
 | `mode` | `review` or `act` | `review` |
 | **Model** | | |
-| `model` | Per-call override; the in-repo config file is the normal swap point | `anthropic/claude-opus-4.7` |
+| `model` | Per-call override; the in-repo config file is the normal swap point | `deepseek/deepseek-v4-pro-0813` (review) / `anthropic/claude-opus-4.7` (act) |
 | `reasoning_effort` | `minimal` / `low` / `medium` / `high` | `medium` |
 | `web_search_mode` | `disabled` / `cached` / `live` | `live` |
 | **Review-only** | | |
