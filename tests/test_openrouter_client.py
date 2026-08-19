@@ -85,6 +85,14 @@ def _client(
     )
 
 
+def _load_single_thread(tmp_path: Path) -> list[dict[str, Any]] | None:
+    store = OpenRouterThreadStore(tmp_path / "threads")
+    files = list(store.directory.iterdir())
+    assert len(files) == 1
+    payload = json.loads(files[0].read_text(encoding="utf-8"))
+    return payload.get("messages")
+
+
 def test_execute_text_returns_plain_answer(tmp_path: Path) -> None:
     transport = _ScriptedTransport([_text_response("all done")])
     client = _client(tmp_path, transport)
@@ -164,6 +172,12 @@ def test_execute_structured_returns_schema_turn_output(tmp_path: Path) -> None:
         "role": "user",
         "content": "Produce the JSON review output now.",
     }
+
+    # The schema-turn answer is persisted on the thread so resumed
+    # conversations carry the final structured output.
+    saved = _load_single_thread(tmp_path)
+    assert saved is not None
+    assert saved[-1] == {"role": "assistant", "content": review_json}
 
 
 def test_execute_structured_empty_output_raises(tmp_path: Path) -> None:

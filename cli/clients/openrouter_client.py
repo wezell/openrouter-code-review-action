@@ -161,6 +161,10 @@ class OpenRouterClient:
             model_name=model_name,
             reasoning_effort=reasoning_effort,
         )
+        # Persist the schema-turn answer too so a resumed thread carries
+        # the full review history, including the last structured output.
+        if content.strip():
+            messages.append({"role": "assistant", "content": content})
         self._save_thread(thread_id, messages, model_name=model_name)
 
         if not content.strip():
