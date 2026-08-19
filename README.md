@@ -50,6 +50,7 @@ on:
   pull_request_review_comment: { types: [created] }
 permissions:
   contents: write
+  workflows: write       # needed if /dotbot may edit .github/workflows/*
   pull-requests: write
   issues: write
 concurrency:
@@ -229,6 +230,12 @@ action-authored review threads** as context.
   on branches in the main repo, or use a PAT with fork access.
 - Grant only what's needed: `contents: write` (push), `pull-requests: write`
   (reviews), `issues: write` (summary comments and Act replies).
+- **`workflows: write` is required for Act mode** when the `/dotbot` fix touches
+  `.github/workflows/*`. The default `GITHUB_TOKEN` refuses to push edits to
+  workflow files without it — you'll see `refusing to allow a GitHub App to
+  create or update workflow ... without workflows permission`. Add
+  `workflows: write` to the Act job's `permissions:` block if you want `/dotbot`
+  to be able to modify workflows.
 
 ## Troubleshooting
 
@@ -251,12 +258,14 @@ GITHUB_TOKEN=… OPENROUTER_API_KEY=… PYTHONPATH=. python -m cli.main \
 
 ## Release & Versioning
 
-This repo uses [Release Please](https://github.com/googleapis/release-please)
-in no-PR mode. Tags and GitHub Releases are created automatically on push to
-`main`. After publish, the `v1` tag is updated to point to the latest release.
+Releases are cut automatically on every merge to `main`: the `Auto Release on
+Merge` workflow bumps the highest existing `v*` tag by a patch (e.g. `v1.1.0` →
+`v1.1.1`), creates the tag and GitHub Release. After publish, the `Release`
+workflow points the `v1` and `latest` tags at the new release commit, so
+consumers pinning `@v1` always get the latest merged action code.
 
-To force a specific version: Actions > "Release Please" > Run workflow >
-provide `release_as` (e.g., `1.3.0`).
+Because the `v1`/`latest` moving tags track releases, self-hosted workflow
+files should pin the action to a specific release SHA.
 
 ## Project Status
 
