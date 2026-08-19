@@ -1,0 +1,147 @@
+{
+  "generated_at": "2026-05-07T15:54:33Z",
+  "generator": "eval/compare_findings.py",
+  "prs": [
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "76fb121bddeac5943fde9060014546a984dd6a5e",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35449",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35458",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35465",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35469",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "467b27607aec3df2a1520a9ab35dd83fef624a88",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35491",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "fec3bfeb56251911ebf21f566141e1b356b7b695",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35498",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "89f68df8cd5b5e1c83c638092548dfecd0b8c23a",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35509",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "f31e33c1d2280fea6a3b7d9a277c14fb51053e6c",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35518",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "f495ee3b148512acdaabccccbea6d5650a205998",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35522",
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "delta_total": 0,
+      "head_sha_baseline": "922996001a7e092e2a591db45b74d7603d085117",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "pr-35567",
+      "status": "pending"
+    }
+  ],
+  "ready_overlap": {
+    "codex_findings": 0,
+    "matched_pairs": 0,
+    "openrouter_findings": 0,
+    "overlap_ratio_codex_baseline": null,
+    "overlap_ratio_openrouter_candidate": null
+  },
+  "sample_size": 10,
+  "schema_version": "1",
+  "status_counts": {
+    "pending": 10
+  },
+  "tolerance_lines": 3,
+  "totals": {
+    "codex_findings_total": 0,
+    "codex_only_total": 0,
+    "matched_pairs_total": 0,
+    "openrouter_findings_total": 0,
+    "openrouter_only_total": 0,
+    "severity_match_total": 0
+  }
+}
