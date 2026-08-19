@@ -272,6 +272,7 @@ def test_model_helpers_parse_and_normalize_payloads() -> None:
                     "absolute_file_path": "/tmp/a.py",
                     "line_range": {"start": 1, "end": 1},
                 },
+                "side": None,
             }
         ],
     }

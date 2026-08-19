@@ -100,6 +100,14 @@ class ReviewFindingLocation:
         }
 
 
+# GitHub inline-comment anchor side. ``RIGHT`` (post-image / new file
+# content) is the default for almost every finding; ``LEFT`` is only used
+# when the comment anchors on a deletion. Local Python validation
+# tolerates ``None`` so persisted fixtures (and historical review-state
+# JSON) without a ``side`` field still load.
+REVIEW_COMMENT_SIDES: tuple[str, ...] = ("LEFT", "RIGHT")
+
+
 @dataclass(frozen=True)
 class ReviewFinding:
     title: str
@@ -107,6 +115,7 @@ class ReviewFinding:
     confidence_score: float | None
     priority: int | None
     code_location: ReviewFindingLocation
+    side: str | None = None
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> ReviewFinding:
@@ -146,12 +155,30 @@ class ReviewFinding:
         if code_location is None:
             raise ReviewContractError("Review finding field 'code_location' is invalid")
 
+        # ``side`` is optional in the lenient parser path so legacy
+        # fixtures keep loading, but if present it must be one of the
+        # GitHub-accepted literals (or null).
+        side_raw = payload.get("side")
+        if side_raw is None:
+            side: str | None = None
+        elif isinstance(side_raw, str):
+            normalized = side_raw.strip().upper()
+            if normalized not in REVIEW_COMMENT_SIDES:
+                raise ReviewContractError(
+                    "Review finding field 'side' must be one of "
+                    f"{list(REVIEW_COMMENT_SIDES)} or null"
+                )
+            side = normalized
+        else:
+            raise ReviewContractError("Review finding field 'side' must be a string or null")
+
         return cls(
             title=title_raw,
             body=body_raw,
             confidence_score=confidence_score,
             priority=priority,
             code_location=code_location,
+            side=side,
         )
 
     def as_dict(self) -> dict[str, Any]:
@@ -161,6 +188,7 @@ class ReviewFinding:
             "confidence_score": self.confidence_score,
             "priority": self.priority,
             "code_location": self.code_location.as_dict(),
+            "side": self.side,
         }
 
 
