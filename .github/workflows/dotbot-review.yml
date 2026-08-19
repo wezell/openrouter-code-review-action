@@ -33,7 +33,7 @@ jobs:
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
           reasoning_effort: high
           debug_level: 1
-          web_search_mode: true
+          web_search_mode: live
 
   act:
     name: Act on /dotbot comments
@@ -66,4 +66,4 @@ jobs:
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
           reasoning_effort: high
           debug_level: 1
-          web_search_mode: true
+          web_search_mode: live
