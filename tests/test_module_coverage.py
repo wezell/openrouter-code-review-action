@@ -767,8 +767,10 @@ def test_review_action_and_workflow_use_expected_resume_guard_and_model() -> Non
         "steps.review_resume_state.outputs.restore_key == "
         "steps.review_resume_state.outputs.current_cache_key"
     ) in action_yaml
-    assert "model: gpt-5.4" in workflow_yaml
-    assert "model: gpt-5.1-codex-max" not in workflow_yaml
+    # The self-hosted workflow wires the OpenRouter provider; the legacy
+    # ``model`` input is gone (model selection is the in-repo config file).
+    assert "openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}" in workflow_yaml
+    assert "model: gpt-" not in workflow_yaml
 
 
 def test_edit_workflow_helpers_cover_reply_formatting_and_context_normalization() -> None:
