@@ -15,7 +15,7 @@ from cli.core.models import (
     CommentContext,
     FindingLocation,
     InlineCommentPayload,
-    PriorCodexReviewComment,
+    PriorDotBotReviewComment,
     ReviewFinding,
     ReviewRunResult,
     ReviewThreadComment,
@@ -27,10 +27,10 @@ from cli.review.artifacts import ReviewArtifacts
 from cli.review.context_manager import ReviewContextWriter
 from cli.review.dedupe import (
     SUMMARY_MARKER,
-    collect_codex_author_logins,
-    collect_prior_codex_review_comments,
-    has_prior_codex_review,
-    render_prior_codex_comments_for_prompt,
+    collect_dotbot_author_logins,
+    collect_prior_dotbot_review_comments,
+    has_prior_dotbot_review,
+    render_prior_dotbot_comments_for_prompt,
 )
 from cli.review.patch_parser import (
     ParsedPatch,
@@ -308,7 +308,7 @@ def test_review_context_writer_writes_artifacts(
     pr._issue_comments = [_FakeIssueComment("issue body")]
     pr._review_comments = [_FakePullRequestComment("inline body", path="pkg/mod.py", line=9)]
 
-    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".codex-context")
+    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".dotbot-context")
     ReviewContextWriter().write_context_artifacts(
         cast(Any, pr),
         artifacts,
@@ -333,7 +333,7 @@ def test_review_context_writer_uses_provided_discussion_snapshots(tmp_path: Path
         def get_review_comments(self) -> list[Any]:
             raise RuntimeError("review fetch failed")
 
-    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".codex-context")
+    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".dotbot-context")
     ReviewContextWriter().write_context_artifacts(
         cast(Any, _BrokenPR()),
         artifacts,
@@ -378,7 +378,7 @@ def test_review_context_writer_marks_invalid_comment_shapes(tmp_path: Path) -> N
     pr._issue_comments = [_InvalidIssueComment()]
     pr._review_comments = [_InvalidReviewComment()]
 
-    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".codex-context")
+    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".dotbot-context")
     ReviewContextWriter().write_context_artifacts(
         cast(Any, pr),
         artifacts,
@@ -394,9 +394,9 @@ def test_review_context_writer_marks_invalid_comment_shapes(tmp_path: Path) -> N
 
 
 def test_review_dedupe_helpers(tmp_path: Path) -> None:
-    assert has_prior_codex_review([type("R", (), {"body": SUMMARY_MARKER})()], []) is True
+    assert has_prior_dotbot_review([type("R", (), {"body": SUMMARY_MARKER})()], []) is True
     assert (
-        has_prior_codex_review(
+        has_prior_dotbot_review(
             [],
             cast(list[IssueCommentLikeProtocol], [_FakeIssueComment(f"{SUMMARY_MARKER} summary")]),
         )
@@ -411,7 +411,7 @@ def test_review_dedupe_helpers(tmp_path: Path) -> None:
             _FakeIssueComment("human note", login="alice"),
         ],
     )
-    assert collect_codex_author_logins(issue_comments) == {"bot", "github-actions"}
+    assert collect_dotbot_author_logins(issue_comments) == {"bot", "github-actions"}
 
     (tmp_path / "renamed.py").write_text("value = 1\n", encoding="utf-8")
     structured_body = (
@@ -420,7 +420,7 @@ def test_review_dedupe_helpers(tmp_path: Path) -> None:
         "**Fix:**\n```python\nvalue = 1\n```\n\n---"
     )
 
-    prior_codex_comments = collect_prior_codex_review_comments(
+    prior_codex_comments = collect_prior_dotbot_review_comments(
         [
             ReviewThreadSnapshot(
                 id="thread-1",
@@ -501,7 +501,7 @@ def test_review_dedupe_helpers(tmp_path: Path) -> None:
         tmp_path,
     )
     assert prior_codex_comments == [
-        PriorCodexReviewComment(
+        PriorDotBotReviewComment(
             id="comment-1",
             thread_id="thread-1",
             path="renamed.py",
@@ -510,7 +510,7 @@ def test_review_dedupe_helpers(tmp_path: Path) -> None:
             current_code="value = 1",
             is_currently_applicable=True,
         ),
-        PriorCodexReviewComment(
+        PriorDotBotReviewComment(
             id="comment-3",
             thread_id="thread-3",
             path="renamed.py",
@@ -523,7 +523,7 @@ def test_review_dedupe_helpers(tmp_path: Path) -> None:
             current_code="value = 2",
             is_currently_applicable=False,
         ),
-        PriorCodexReviewComment(
+        PriorDotBotReviewComment(
             id="comment-5",
             thread_id="thread-5",
             path="renamed.py",
@@ -533,19 +533,19 @@ def test_review_dedupe_helpers(tmp_path: Path) -> None:
             is_currently_applicable=True,
         ),
     ]
-    assert render_prior_codex_comments_for_prompt(prior_codex_comments) == "\n".join(
+    assert render_prior_dotbot_comments_for_prompt(prior_codex_comments) == "\n".join(
         [
-            "<prior_codex_review_comments>",
+            "<prior_dotbot_review_comments>",
             '{"id": "comment-1", "thread_id": "thread-1", "path": "renamed.py", "line": 11, "current_code": "value = 1", "body": "**Current code:**\\n```python\\nvalue = 1\\n```\\n\\n**Problem:** still broken.\\n\\n**Fix:**\\n```python\\nvalue = 1\\n```\\n\\n---"}',
             '{"id": "comment-5", "thread_id": "thread-5", "path": "renamed.py", "line": 9, "current_code": "value = 1", "body": "**Current code:**\\n```python\\nvalue = 1\\n```\\n\\n**Problem:** still broken.\\n\\n**Fix:**\\n```python\\nvalue = 1\\n```\\n\\n---"}',
-            "</prior_codex_review_comments>",
+            "</prior_dotbot_review_comments>",
         ]
     )
 
 
 def test_review_posting_helpers_write_and_post(tmp_path: Path) -> None:
     repo_root = tmp_path
-    artifacts = ReviewArtifacts(repo_root=repo_root, context_dir_name=".codex-context")
+    artifacts = ReviewArtifacts(repo_root=repo_root, context_dir_name=".dotbot-context")
     file_map = ParsedPatch(
         valid_head_lines={1, 2, 3},
         added_head_lines={1, 2, 3},
@@ -740,11 +740,11 @@ def test_github_client_wraps_repo_and_pr_load_failures(monkeypatch: pytest.Monke
 def test_main_helpers_cover_commands_and_event_loading(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    assert extract_edit_command("/codex fix this") == "fix this"
-    assert extract_edit_command("/codex: fix this") == "fix this"
-    assert extract_edit_command("/codex") is None
-    assert extract_edit_command("/codex:") is None
-    assert extract_edit_command("/codexify fix this") is None
+    assert extract_edit_command("/dotbot fix this") == "fix this"
+    assert extract_edit_command("/dotbot: fix this") == "fix this"
+    assert extract_edit_command("/dotbot") is None
+    assert extract_edit_command("/dotbot:") is None
+    assert extract_edit_command("/dotbotify fix this") is None
     assert extract_edit_command("not a command") is None
 
     good_event = tmp_path / "event.json"
@@ -761,10 +761,10 @@ def test_main_helpers_cover_commands_and_event_loading(
 
 def test_review_action_and_workflow_use_expected_resume_guard_and_model() -> None:
     action_yaml = Path("action.yml").read_text(encoding="utf-8")
-    workflow_yaml = Path(".github/workflows/codex-review.yml").read_text(encoding="utf-8")
+    workflow_yaml = Path(".github/workflows/dotbot-review.yml").read_text(encoding="utf-8")
 
     assert (
-        "steps.review_codex_cache.outputs.cache-hit == 'true' && "
+        "steps.review_dotbot_cache.outputs.cache-hit == 'true' && "
         "steps.review_resume_state.outputs.restore_key == "
         "steps.review_resume_state.outputs.current_cache_key"
     ) in action_yaml

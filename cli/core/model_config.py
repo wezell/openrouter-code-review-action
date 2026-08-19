@@ -17,7 +17,7 @@ File shape
 
     # .openrouter-review.yml
     review:
-      model: anthropic/claude-opus-4.7
+      model: deepseek/deepseek-v4-pro-0813
       reasoning_effort: medium       # optional; default: medium
       web_search_mode: live          # optional; default: live
     act:
@@ -39,7 +39,7 @@ import yaml
 from .exceptions import ConfigurationError
 
 DEFAULT_CONFIG_PATH = ".openrouter-review.yml"
-DEFAULT_REVIEW_MODEL = "anthropic/claude-opus-4.7"
+DEFAULT_REVIEW_MODEL = "deepseek/deepseek-v4-pro-0813"
 DEFAULT_ACT_MODEL = "anthropic/claude-opus-4.7"
 
 _VALID_REASONING_EFFORTS = frozenset({"minimal", "low", "medium", "high"})

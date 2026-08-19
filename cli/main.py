@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .core.config import ReviewConfig
-from .core.exceptions import CodexReviewError, ConfigurationError
+from .core.exceptions import ConfigurationError, DotBotReviewError
 from .core.models import CommentContext
 from .workflows.edit_workflow import EditWorkflow
 from .workflows.review_workflow import ReviewWorkflow
@@ -29,7 +29,7 @@ class _CommentCommand:
 def create_parser() -> argparse.ArgumentParser:
     """Create the command line argument parser."""
     parser = argparse.ArgumentParser(
-        description="Autonomous code review using Codex",
+        description="autonomous dotbot code review",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -160,18 +160,18 @@ def load_github_event() -> dict[str, Any]:
 
 
 def extract_edit_command(text: str) -> str | None:
-    """Extract a /codex edit command from a comment body.
+    """Extract a /dotbot edit command from a comment body.
 
     Accepted forms:
-      - "/codex <instructions>"
-      - "/codex: <instructions>"
+      - "/dotbot <instructions>"
+      - "/dotbot: <instructions>"
     Returns the instruction text to pass to the coding agent, or None.
     """
     if not text:
         return None
     t = text.strip()
     low = t.lower()
-    prefix = "/codex"
+    prefix = "/dotbot"
     if not low.startswith(prefix):
         return None
 
@@ -238,8 +238,8 @@ def _prepare_comment_command(
 ) -> _CommentCommand | None:
     if config.mode != "act":
         print(
-            "Ignoring /codex command because mode is "
-            f"{config.mode!r}; set CODEX_MODE=act to enable comment-triggered edits."
+            "Ignoring /dotbot command because mode is "
+            f"{config.mode!r}; set DOTBOT_MODE=act to enable comment-triggered edits."
         )
         return None
 
@@ -259,7 +259,7 @@ def _is_commenter_allowed(config: ReviewConfig, comment: dict[str, Any]) -> bool
     if config.is_commenter_allowed(author_association):
         return True
     print(
-        "Ignoring /codex command from unauthorized commenter association "
+        "Ignoring /dotbot command from unauthorized commenter association "
         f"{author_association or '<missing>'}. Allowed: "
         f"{', '.join(config.allowed_commenter_associations) or '<none>'}."
     )
@@ -336,13 +336,13 @@ def main() -> int:
     except KeyboardInterrupt:
         print("\nInterrupted by user", file=sys.stderr)
         return 130
-    except CodexReviewError as e:
+    except DotBotReviewError as e:
         print(f"Review error: {e}", file=sys.stderr)
         return 1
     except Exception as e:
         print(f"Unexpected error: {e}", file=sys.stderr)
         if args.debug_level >= 2:
-            LOGGER.exception("Unhandled exception in codex-review main")
+            LOGGER.exception("Unhandled exception in dotbot-review main")
         return 2
 
 

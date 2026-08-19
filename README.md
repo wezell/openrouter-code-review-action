@@ -1,22 +1,15 @@
 # OpenRouter Code Review Action (Review + Act)
 
 Run an OpenRouter-routed model to review pull requests and, on demand, make
-autonomous edits driven by `/codex` comments. Review path uses direct
-OpenRouter chat completions with schema-enforced JSON output; Act path shells
-out to [aider](https://aider.chat) so models and providers can be swapped
-quickly when pricing or quality changes.
+autonomous edits driven by `/dotbot` comments. Review path uses direct
+OpenRouter chat completions with schema-enforced JSON output; Act path runs the
+built-in tool-calling agent loop so models and providers can be swapped quickly
+when pricing or quality changes.
 
 - **Review**: posts precise inline review comments and a PR-level summary. When
   there are no findings, only the summary is posted.
-- **Act**: applies focused edits when trusted users comment `/codex`; commits
-  and pushes to the PR branch via aider.
-
-> **Status — work in progress.** This action is mid-migration from the legacy
-> Codex SDK to OpenRouter + aider. The model-config file, OpenRouter wiring,
-> and review continuation are in place; the bake-off, full Codex-baseline
-> parity verification, and a few SHA-delta polish items are still being driven
-> by an Ouroboros session against `seed.yaml`. See [Resume / Project state](#resume--project-state)
-> at the bottom for how to pick the run back up.
+- **Act**: applies focused edits when trusted users comment `/dotbot`; commits
+  and pushes to the PR branch.
 
 ## Quick Start (Review)
 
@@ -43,11 +36,12 @@ jobs:
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
 ```
 
-## Act on `/codex` Comments
+## Act on `/dotbot` Comments
 
-When a trusted user comments `/codex <instructions>` on a PR, the action checks
-out the branch, runs aider against the configured `act.model`, and pushes the
-result. Give aider a working environment so it can build/test before pushing.
+When a trusted user comments `/dotbot <instructions>` on a PR, the action checks
+out the branch, runs the built-in agent loop (with `read_file`, `write_file`,
+`run_command` tools) against the configured `act.model`, and pushes the result.
+Give the agent a runnable environment so it can build/test before pushing.
 
 ```yaml
 name: PR Act
@@ -59,20 +53,20 @@ permissions:
   pull-requests: write
   issues: write
 concurrency:
-  group: openrouter-act-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}
+  group: dotbot-act-${{ github.event.issue.number || github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 jobs:
   act:
-    name: Act on /codex comments
+    name: Act on /dotbot comments
     if: >-
       (
         (
           github.event_name == 'issue_comment' &&
-          startsWith(github.event.comment.body, '/codex') &&
+          startsWith(github.event.comment.body, '/dotbot') &&
           github.event.issue.pull_request
         ) || (
           github.event_name == 'pull_request_review_comment' &&
-          startsWith(github.event.comment.body, '/codex')
+          startsWith(github.event.comment.body, '/dotbot')
         )
       ) &&
       github.actor != 'dependabot[bot]'
@@ -84,14 +78,14 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || format('refs/pull/{0}/head', github.event.issue.number) }}
           token: ${{ secrets.REPO_ACCESS_TOKEN }}
 
-      # Give aider a working environment so it can build/test.
+      # Give the agent a working environment so it can build/test.
       # Replace with your own setup (install deps, run migrations, etc.).
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
       - run: npm ci
 
-      - name: OpenRouter autonomous edits
+      - name: dotbot autonomous edits
         uses: wezell/openrouter-code-review-action@v1
         with:
           mode: act
@@ -99,11 +93,11 @@ jobs:
           allowed_commenter_associations: MEMBER,OWNER,COLLABORATOR
 ```
 
-### `/codex` Commands
+### `/dotbot` Commands
 
-- **`/codex <instructions>`** — apply minimal diffs matching the instructions.
-- Bare **`/codex`** is ignored; include explicit instructions after the command.
-- **`/codex address comments`** (or natural variants like "please fix the
+- **`/dotbot <instructions>`** — apply minimal diffs matching the instructions.
+- Bare **`/dotbot`** is ignored; include explicit instructions after the command.
+- **`/dotbot address comments`** (or natural variants like "please fix the
   review comments") — address unresolved review threads. Only unresolved
   threads are considered; resolved threads are ignored.
 
@@ -117,7 +111,7 @@ action-input change required.
 ```yaml
 # .openrouter-review.yml
 review:
-  model: anthropic/claude-opus-4.7    # change this line to swap review model
+  model: deepseek/deepseek-v4-pro-0813    # change this line to swap review model
   reasoning_effort: medium            # optional — minimal | low | medium | high
   web_search_mode: live               # optional — disabled | cached | live
 
@@ -126,7 +120,8 @@ act:
   reasoning_effort: medium
 ```
 
-The defaults are `anthropic/claude-opus-4.7` for both modes. To pin a different
+The defaults are `deepseek/deepseek-v4-pro-0813` for review mode and
+`anthropic/claude-opus-4.7` for act mode. To pin a different
 provider — e.g. `openai/gpt-5.4`, `google/gemini-2.5-pro`,
 `anthropic/claude-sonnet-4.5` — change the slug on the matching `model:` line
 and commit. The next run uses the new model.
@@ -147,7 +142,7 @@ call time; `cached` and `disabled` skip the live web fetch.
 | `config_path` | Path to the in-repo model config file | `.openrouter-review.yml` |
 | `mode` | `review` or `act` | `review` |
 | **Model** | | |
-| `model` | Per-call override; the in-repo config file is the normal swap point | `anthropic/claude-opus-4.7` |
+| `model` | Per-call override; the in-repo config file is the normal swap point | `deepseek/deepseek-v4-pro-0813` (review) / `anthropic/claude-opus-4.7` (act) |
 | `reasoning_effort` | `minimal` / `low` / `medium` / `high` | `medium` |
 | `web_search_mode` | `disabled` / `cached` / `live` | `live` |
 | **Review-only** | | |
@@ -180,7 +175,7 @@ Sandbox parity with the legacy Codex client is preserved: review and act turns
 run with full access, and any future read-only turn would see the mutating
 tools disabled. Tool results feed back as `role: "tool"` messages, so the
 conversation (including tool traffic) is persisted for resume. Setting
-`CODEX_PROVIDER=openai` routes to the legacy Codex SDK client instead.
+`DOTBOT_PROVIDER=openai` routes to the legacy Codex SDK client instead.
 
 ## What It Posts
 
@@ -188,7 +183,9 @@ conversation (including tool traffic) is persisted for resume. Setting
   current diff, the finding is filtered or remapped before submission so
   GitHub does not return 422.
 - **PR-level summary** as an issue comment on each run (refreshed on re-runs;
-  prior summaries are deleted).
+  prior summaries are deleted). The summary footer records which model and
+  reasoning effort produced the review, e.g. `<sub>reviewed by dotbot ·
+  deepseek/deepseek-v4-pro-0813 · medium</sub>`.
 - **Multi-line suggestions** only when contiguous and short; otherwise a
   single-line comment.
 
@@ -261,40 +258,17 @@ in no-PR mode. Tags and GitHub Releases are created automatically on push to
 To force a specific version: Actions > "Release Please" > Run workflow >
 provide `release_as` (e.g., `1.3.0`).
 
-## Resume / Project state
+## Project Status
 
-This repo is being driven by an Ouroboros seed (`seed.yaml`) that defines the
-goal, constraints, acceptance criteria, and the migration ontology. The most
-recent Ouroboros run was paused mid-execution to move work to another machine.
+This action started as a clone of the GitHub codex-review-action and was
+migrated to route all model calls through [OpenRouter](https://openrouter.ai)
+with a built-in tool-calling agent loop (see [Agent Loop](#agent-loop)). The
+legacy Codex SDK client remains for parity behind `DOTBOT_PROVIDER=openai`, and
+the `eval/` tooling compares new model candidates against a Codex baseline.
 
-**Last paused state**
-
-- Phase: `Deliver`, Level 2/3 (Tasks 1, 2, 4, 5, 7)
-- Tasks: 3/9 complete
-- Subtasks: 13/29 complete · 10 working · 6 pending
-- In-flight subtasks at pause:
-  - Wire the review pipeline to scope model input to only the SHA-delta
-    files/hunks when prior state exists, falling back to full review on first
-    run or missing state.
-  - Run the Codex baseline reviewer over the labeled dataset and capture
-    per-finding outputs for scoring.
-  - Run the OpenRouter-based review action against the curated PR sample and
-    collect findings output in a comparable format.
-
-**Resume IDs (Ouroboros, machine-local)**
-
-- Session ID: `orch_f0eb099e72e4`
-- Last execution ID: `exec_c8b71e370561` (terminal: cancelled)
-
-These IDs are local to the Ouroboros plugin store on the machine that started
-the run. On a different machine, kick off a fresh session against `seed.yaml`
-— the project files capture the partial progress:
+The evaluation harness scores candidate models for review-quality parity:
 
 ```bash
-ooo run seed.yaml
+uv run python -m eval.run_openrouter_baseline   # run candidates over the PR sample
+uv run python -m eval.overlap_score           # score overlap vs the Codex baseline
 ```
-
-**Note on `seed.yaml`**: constraint #7 (`Initial review and act model: ...`)
-must be quoted as a string — an unquoted colon makes YAML parse it as a
-mapping and Pydantic validation fails. The committed file already has the
-correct quoting.

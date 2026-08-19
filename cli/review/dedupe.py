@@ -6,13 +6,13 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ..core.github_types import IssueCommentLikeProtocol, ReviewLikeProtocol
-from ..core.models import PriorCodexReviewComment, ReviewThreadSnapshot
+from ..core.models import PriorDotBotReviewComment, ReviewThreadSnapshot
 
-SUMMARY_MARKER = "Codex Autonomous Review:"
+SUMMARY_MARKER = "dotbot code review:"
 _CURRENT_CODE_BLOCK_RE = re.compile(r"\*\*Current code:\*\*\s*```[^\n]*\n(.*?)```", re.DOTALL)
 
 
-def has_prior_codex_review(
+def has_prior_dotbot_review(
     reviews: Sequence[ReviewLikeProtocol],
     issue_comments: Sequence[IssueCommentLikeProtocol],
 ) -> bool:
@@ -21,10 +21,10 @@ def has_prior_codex_review(
         if isinstance(review_body, str) and SUMMARY_MARKER in review_body:
             return True
 
-    return bool(collect_codex_author_logins(issue_comments))
+    return bool(collect_dotbot_author_logins(issue_comments))
 
 
-def collect_codex_author_logins(
+def collect_dotbot_author_logins(
     issue_comments: Sequence[IssueCommentLikeProtocol],
 ) -> set[str]:
     author_logins: set[str] = set()
@@ -40,13 +40,13 @@ def collect_codex_author_logins(
     return author_logins
 
 
-def collect_prior_codex_review_comments(
+def collect_prior_dotbot_review_comments(
     review_threads: Sequence[ReviewThreadSnapshot],
-    codex_author_logins: set[str],
+    dotbot_author_logins: set[str],
     repo_root: Path,
-) -> list[PriorCodexReviewComment]:
-    items: list[PriorCodexReviewComment] = []
-    if not codex_author_logins:
+) -> list[PriorDotBotReviewComment]:
+    items: list[PriorDotBotReviewComment] = []
+    if not dotbot_author_logins:
         return items
 
     resolved_repo_root = repo_root.resolve()
@@ -56,7 +56,7 @@ def collect_prior_codex_review_comments(
 
         first_comment = review_thread.comments[0]
         prompt_line = first_comment.prompt_line
-        if _normalize_author_login(first_comment.author) not in codex_author_logins:
+        if _normalize_author_login(first_comment.author) not in dotbot_author_logins:
             continue
         if not first_comment.body or not first_comment.path or not isinstance(prompt_line, int):
             continue
@@ -64,7 +64,7 @@ def collect_prior_codex_review_comments(
         if current_code is None:
             continue
         items.append(
-            PriorCodexReviewComment(
+            PriorDotBotReviewComment(
                 id=first_comment.id,
                 thread_id=review_thread.id,
                 path=first_comment.path,
@@ -82,8 +82,8 @@ def collect_prior_codex_review_comments(
     return items
 
 
-def render_prior_codex_comments_for_prompt(
-    existing_comments: Sequence[PriorCodexReviewComment],
+def render_prior_dotbot_comments_for_prompt(
+    existing_comments: Sequence[PriorDotBotReviewComment],
 ) -> str:
     if not existing_comments:
         return ""
@@ -93,7 +93,7 @@ def render_prior_codex_comments_for_prompt(
     ]
     lines: list[str] = []
     if applicable_comments:
-        lines.append("<prior_codex_review_comments>")
+        lines.append("<prior_dotbot_review_comments>")
         for comment in applicable_comments[:200]:
             lines.append(
                 json.dumps(
@@ -108,7 +108,7 @@ def render_prior_codex_comments_for_prompt(
                     ensure_ascii=True,
                 )
             )
-        lines.append("</prior_codex_review_comments>")
+        lines.append("</prior_dotbot_review_comments>")
     return "\n".join(lines)
 
 

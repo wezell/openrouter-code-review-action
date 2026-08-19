@@ -74,7 +74,7 @@ class _EditEarlyExit:
 _DebugFn = Callable[[int, str], None]
 _REBASE_IN_PROGRESS_MESSAGE = (
     "Git operation failed: repository is in an active rebase state. "
-    "Resolve or abort the rebase before rerunning /codex."
+    "Resolve or abort the rebase before rerunning /dotbot."
 )
 
 
@@ -474,7 +474,7 @@ def _finalize_git_edit(
     if post_agent_state.changed and post_agent_state.agent_touched_paths:
         git_setup_identity()
         summary = command_text.splitlines()[0] if command_text.splitlines() else command_text
-        git_commit_paths(f"Codex edit: {summary[:72]}", post_agent_state.agent_touched_paths)
+        git_commit_paths(f"dotbot edit: {summary[:72]}", post_agent_state.agent_touched_paths)
 
     after_head_sha = git_current_head_sha()
     history_rewritten = (
@@ -538,7 +538,7 @@ def _format_edit_reply(
         status = "no changes"
     else:
         status = "not pushed"
-    header = f"Codex edit result ({status}):"
+    header = f"dotbot edit result ({status}):"
     body = agent_output.strip()
     if len(body) > 3500:
         body = body[:3500] + "\n\n… (truncated)"

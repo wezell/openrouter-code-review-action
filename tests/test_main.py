@@ -4,7 +4,7 @@ import json
 import sys
 
 from cli import main as main_module
-from cli.core.exceptions import CodexReviewError
+from cli.core.exceptions import DotBotReviewError
 from cli.core.models import CommentContext, ReviewRunResult
 from cli.review.posting import ReviewPostingOutcome
 from cli.workflows.review_workflow import (
@@ -85,7 +85,7 @@ def test_main_noops_for_non_codex_comment_event(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(main_module, "ReviewWorkflow", _UnexpectedWorkflow)
     monkeypatch.setattr(main_module, "EditWorkflow", _UnexpectedWorkflow)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
@@ -97,7 +97,7 @@ def test_main_noops_for_bare_codex_comment(monkeypatch, tmp_path) -> None:
         "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
         "comment": {
             "id": 123,
-            "body": "/codex",
+            "body": "/dotbot",
             "user": {"login": "octocat"},
             "author_association": "MEMBER",
         },
@@ -118,7 +118,7 @@ def test_main_noops_for_bare_codex_comment(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(main_module, "ReviewWorkflow", _UnexpectedWorkflow)
     monkeypatch.setattr(main_module, "EditWorkflow", _UnexpectedWorkflow)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
@@ -130,7 +130,7 @@ def test_main_noops_for_unauthorized_codex_comment(monkeypatch, tmp_path, capsys
         "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
         "comment": {
             "id": 123,
-            "body": "/codex fix docs",
+            "body": "/dotbot fix docs",
             "user": {"login": "octocat"},
             "author_association": "CONTRIBUTOR",
         },
@@ -144,7 +144,7 @@ def test_main_noops_for_unauthorized_codex_comment(monkeypatch, tmp_path, capsys
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("GITHUB_EVENT_NAME", "issue_comment")
-    monkeypatch.setenv("CODEX_MODE", "act")
+    monkeypatch.setenv("DOTBOT_MODE", "act")
 
     class _UnexpectedWorkflow:
         def __init__(self, config):  # noqa: ARG002
@@ -152,7 +152,7 @@ def test_main_noops_for_unauthorized_codex_comment(monkeypatch, tmp_path, capsys
 
     monkeypatch.setattr(main_module, "ReviewWorkflow", _UnexpectedWorkflow)
     monkeypatch.setattr(main_module, "EditWorkflow", _UnexpectedWorkflow)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
@@ -165,7 +165,7 @@ def test_main_fails_for_invalid_comment_payload(monkeypatch, tmp_path, capsys) -
         "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
         "comment": {
             "id": "not-an-int",
-            "body": "/codex fix docs",
+            "body": "/dotbot fix docs",
             "user": {"login": "octocat"},
             "author_association": "MEMBER",
         },
@@ -179,10 +179,10 @@ def test_main_fails_for_invalid_comment_payload(monkeypatch, tmp_path, capsys) -
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("GITHUB_EVENT_NAME", "issue_comment")
-    monkeypatch.setenv("CODEX_MODE", "act")
+    monkeypatch.setenv("DOTBOT_MODE", "act")
     monkeypatch.setattr(main_module, "EditWorkflow", object)
     monkeypatch.setattr(main_module, "ReviewWorkflow", object)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
@@ -195,7 +195,7 @@ def test_main_runs_edit_workflow_for_authorized_codex_comment(monkeypatch, tmp_p
         "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
         "comment": {
             "id": 123,
-            "body": "/codex: fix docs",
+            "body": "/dotbot: fix docs",
             "user": {"login": "octocat"},
             "author_association": "COLLABORATOR",
         },
@@ -209,7 +209,7 @@ def test_main_runs_edit_workflow_for_authorized_codex_comment(monkeypatch, tmp_p
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("GITHUB_EVENT_NAME", "issue_comment")
-    monkeypatch.setenv("CODEX_MODE", "act")
+    monkeypatch.setenv("DOTBOT_MODE", "act")
 
     calls: list[tuple[str, int, object]] = []
 
@@ -223,7 +223,7 @@ def test_main_runs_edit_workflow_for_authorized_codex_comment(monkeypatch, tmp_p
 
     monkeypatch.setattr(main_module, "EditWorkflow", _Workflow)
     monkeypatch.setattr(main_module, "ReviewWorkflow", object)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
@@ -236,7 +236,7 @@ def test_main_runs_edit_workflow_for_authorized_codex_comment(monkeypatch, tmp_p
                 id=123,
                 event_name="issue_comment",
                 author="octocat",
-                body="/codex: fix docs",
+                body="/dotbot: fix docs",
             ),
         )
     ]
@@ -247,7 +247,7 @@ def test_main_noops_for_codex_comment_in_review_mode(monkeypatch, tmp_path, caps
         "issue": {"number": 17, "pull_request": {"url": "https://example.test/pr/17"}},
         "comment": {
             "id": 123,
-            "body": "/codex fix docs",
+            "body": "/dotbot fix docs",
             "user": {"login": "octocat"},
             "author_association": "COLLABORATOR",
         },
@@ -261,20 +261,20 @@ def test_main_noops_for_codex_comment_in_review_mode(monkeypatch, tmp_path, caps
     monkeypatch.setenv("GITHUB_REPOSITORY", "owner/repo")
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("GITHUB_EVENT_NAME", "issue_comment")
-    monkeypatch.setenv("CODEX_MODE", "review")
+    monkeypatch.setenv("DOTBOT_MODE", "review")
 
     class _UnexpectedWorkflow:
         def __init__(self, config):  # noqa: ARG002
-            raise AssertionError("workflows must not run for /codex comments in review mode")
+            raise AssertionError("workflows must not run for /dotbot comments in review mode")
 
     monkeypatch.setattr(main_module, "EditWorkflow", _UnexpectedWorkflow)
     monkeypatch.setattr(main_module, "ReviewWorkflow", _UnexpectedWorkflow)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
     assert rc == 0
-    assert "set CODEX_MODE=act to enable comment-triggered edits" in capsys.readouterr().out
+    assert "set DOTBOT_MODE=act to enable comment-triggered edits" in capsys.readouterr().out
 
 
 def test_main_runs_review_workflow_for_actions_pr_event(monkeypatch, tmp_path, capsys) -> None:
@@ -301,7 +301,7 @@ def test_main_runs_review_workflow_for_actions_pr_event(monkeypatch, tmp_path, c
 
     monkeypatch.setattr(main_module, "ReviewWorkflow", _Workflow)
     monkeypatch.setattr(main_module, "EditWorkflow", object)
-    monkeypatch.setattr(sys, "argv", ["codex-review"])
+    monkeypatch.setattr(sys, "argv", ["dotbot-review"])
 
     rc = main_module.main()
 
@@ -329,7 +329,7 @@ def test_main_runs_review_workflow_in_review_mode(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         sys,
         "argv",
-        ["codex-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
+        ["dotbot-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
     )
 
     rc = main_module.main()
@@ -359,7 +359,7 @@ def test_main_runs_review_workflow_with_cli_repo_and_env_token_only(monkeypatch,
     monkeypatch.setattr(
         sys,
         "argv",
-        ["codex-review", "--repo", "owner/repo", "--pr", "19", "--mode", "review"],
+        ["dotbot-review", "--repo", "owner/repo", "--pr", "19", "--mode", "review"],
     )
 
     rc = main_module.main()
@@ -388,7 +388,7 @@ def test_main_reports_carried_forward_findings_separately(monkeypatch, capsys) -
     monkeypatch.setattr(
         sys,
         "argv",
-        ["codex-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
+        ["dotbot-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
     )
 
     rc = main_module.main()
@@ -420,7 +420,7 @@ def test_main_reports_clean_summary_without_resolution_counts(monkeypatch, capsy
     monkeypatch.setattr(
         sys,
         "argv",
-        ["codex-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
+        ["dotbot-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
     )
 
     rc = main_module.main()
@@ -441,14 +441,14 @@ def test_main_returns_one_for_review_workflow_errors(monkeypatch, capsys) -> Non
 
         def process_review(self, pr_number: int) -> ReviewWorkflowResult:
             assert pr_number == 17
-            raise CodexReviewError("boom")
+            raise DotBotReviewError("boom")
 
     monkeypatch.setattr(main_module, "ReviewWorkflow", _Workflow)
     monkeypatch.setattr(main_module, "EditWorkflow", object)
     monkeypatch.setattr(
         sys,
         "argv",
-        ["codex-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
+        ["dotbot-review", "--repo", "owner/repo", "--pr", "17", "--mode", "review"],
     )
 
     rc = main_module.main()

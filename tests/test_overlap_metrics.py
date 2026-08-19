@@ -208,7 +208,7 @@ def test_ready_status_emits_metrics(
     pr = "pr-1"
     runs_id = "dotcms-core-1"
     sha = "aa" * 20
-    # Codex has 2 findings; OpenRouter has 2 findings, one matches at
+    # dotbot has 2 findings; OpenRouter has 2 findings, one matches at
     # the same path/line, the other is a false positive on a new file.
     _write(
         baseline / pr / "codex-findings.json",

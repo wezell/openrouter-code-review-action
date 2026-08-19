@@ -78,7 +78,7 @@ class FakePR:
 
     def get_reviews(
         self,
-    ):  # used by _has_prior_codex_review; keep empty to avoid semantic dedup
+    ):  # used by _has_prior_dotbot_review; keep empty to avoid semantic dedup
         return []
 
     def as_issue(self) -> FakeIssueAdapter:

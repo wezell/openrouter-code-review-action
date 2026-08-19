@@ -20,8 +20,8 @@ Concept map
   :class:`PriorReviewKey` round-trip through the same file path.
 * ``DEFAULT_STATE_DIRECTORY_NAME`` — the conventional directory name
   carved out under ``RUNNER_TEMP``. Distinct from the legacy
-  ``codex-review-state`` directory so a post-migration run cannot
-  accidentally pick up a stale Codex thread cache.
+  ``dotbot-review-state`` directory so a post-migration run cannot
+  accidentally pick up a stale review thread cache.
 * ``ReviewStateNotFound`` — raised by ``load(...)`` only when the caller
   passes ``required=True``. The default surface returns ``None`` for
   missing files so the workflow can fall back to a fresh full review on
@@ -294,7 +294,7 @@ class ReviewStateStore:
         Returns an empty list if the base directory does not exist.
         Files are sorted by name for deterministic test/log output.
         Only files matching the ``openrouter-review-v1-*.json`` naming
-        convention are returned, so a stray ``.codex-review-v1-*`` file
+        convention are returned, so a stray ``.dotbot-review-v1-*`` file
         from the legacy action will not be reported.
         """
         if not self.base_dir.is_dir():

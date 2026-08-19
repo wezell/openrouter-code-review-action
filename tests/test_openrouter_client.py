@@ -11,7 +11,7 @@ from cli.clients.model_client import ModelClientProtocol, create_model_client
 from cli.clients.openrouter_client import OpenRouterClient
 from cli.clients.openrouter_thread_store import OpenRouterThreadStore
 from cli.core.config import ReviewConfig
-from cli.core.exceptions import CodexExecutionError, ConfigurationError
+from cli.core.exceptions import ConfigurationError, DotBotExecutionError
 
 
 def _config(tmp_path: Path, **overrides: Any) -> ReviewConfig:
@@ -133,7 +133,7 @@ def test_execute_text_empty_answer_raises(tmp_path: Path) -> None:
     transport = _ScriptedTransport([_text_response("   ")])
     client = _client(tmp_path, transport)
 
-    with pytest.raises(CodexExecutionError, match="did not return an agent message"):
+    with pytest.raises(DotBotExecutionError, match="did not return an agent message"):
         client.execute_text("hello")
 
 
@@ -184,7 +184,7 @@ def test_execute_structured_empty_output_raises(tmp_path: Path) -> None:
     transport = _ScriptedTransport([_text_response("ok"), _text_response("")])
     client = _client(tmp_path, transport)
 
-    with pytest.raises(CodexExecutionError, match="structured output"):
+    with pytest.raises(DotBotExecutionError, match="structured output"):
         client.execute_structured("review", output_schema={"type": "object"})
 
 

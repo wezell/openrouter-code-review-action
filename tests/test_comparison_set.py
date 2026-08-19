@@ -5,7 +5,7 @@ downstream labeling (Sub-AC 1.4) and scoring (Sub-AC 1.5) sub-ACs:
 
 * Per-PR JSON shape — normalized fields, predictable keys, no surprise
   values for downstream consumers to special-case.
-* Run-state semantics — when only the Codex side is captured the
+* Run-state semantics — when only the dotbot side is captured the
   record reports ``awaiting_openrouter``; when neither is the rollup
   is ``pending``; both captured flips to ``ready_for_labeling``.
 * Severity normalization — both the explicit ``priority`` field and

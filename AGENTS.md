@@ -28,7 +28,7 @@
 
 ## Security & Configuration Tips
 - Never print secrets; avoid high `--debug` on public logs. Prefer `--dry-run` when exploring.
-- Default model/config are set in `action.yml`; override via inputs or env (`CODEX_*`).
+- Default model/config are set in `action.yml`; override via inputs or env (`DOTBOT_*`).
 
 ## Agent-Specific Instructions
 - When changing CLI args or Action inputs, update `README.md` and examples.

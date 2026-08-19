@@ -13,7 +13,7 @@ Sub-AC 4.1.2 — verifies the file-backed storage layer
   but raise when callers explicitly opt out of tolerance.
 * ``list_paths`` only reports files matching the
   ``openrouter-review-v1-`` namespace, so a stray legacy
-  ``codex-review-v1-`` file is ignored.
+  ``dotbot-review-v1-`` file is ignored.
 """
 
 from __future__ import annotations
@@ -98,7 +98,7 @@ def _sample_state(
 
 def test_default_directory_name_uses_openrouter_namespace() -> None:
     # The directory carved under RUNNER_TEMP must match the new
-    # OpenRouter namespace, not the legacy "codex-review-state" path.
+    # OpenRouter namespace, not the legacy "dotbot-review-state" path.
     assert DEFAULT_STATE_DIRECTORY_NAME == "openrouter-review-state"
 
 
@@ -445,8 +445,8 @@ def test_list_paths_returns_only_namespaced_files(tmp_path: Path) -> None:
 
     # One legitimate state file
     record = store.save(_sample_state())
-    # A stray legacy file from the codex-review action
-    (tmp_path / "codex-review-v1-old.json").write_text("{}", encoding="utf-8")
+    # A stray legacy file from the dotbot-review action
+    (tmp_path / "dotbot-review-v1-old.json").write_text("{}", encoding="utf-8")
     # A non-JSON file someone dropped in
     (tmp_path / "openrouter-review-v1-readme.txt").write_text("note", encoding="utf-8")
     # A subdirectory that should be ignored

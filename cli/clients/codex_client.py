@@ -13,7 +13,7 @@ from codex.thread import CodexTurnStream, Thread
 from pydantic import BaseModel
 
 from ..core.config import ReviewConfig, make_debug
-from ..core.exceptions import CodexExecutionError
+from ..core.exceptions import DotBotExecutionError
 from .codex_event_debugger import CodexEventDebugger
 
 _REASONING_EFFORT_VALUES = {"minimal", "low", "medium", "high", "xhigh"}
@@ -160,11 +160,11 @@ class CodexClient:
             )
             return session_runner(thread, effort, stream_enabled)
         except ThreadRunError as run_err:
-            raise CodexExecutionError(f"Codex execution failed: {run_err}") from run_err
-        except CodexExecutionError:
+            raise DotBotExecutionError(f"Codex execution failed: {run_err}") from run_err
+        except DotBotExecutionError:
             raise
         except Exception as exc:
-            raise CodexExecutionError(f"Codex execution failed: {exc}") from exc
+            raise DotBotExecutionError(f"Codex execution failed: {exc}") from exc
 
     def _run_text_session(
         self,
@@ -304,7 +304,7 @@ class CodexClient:
             return state
 
         if isinstance(event, protocol.ErrorNotificationModel):
-            raise CodexExecutionError(f"Codex error: {event.params.error.message}")
+            raise DotBotExecutionError(f"Codex error: {event.params.error.message}")
 
         if isinstance(event, protocol.TurnCompletedNotificationModel):
             state["task_complete"] = True
@@ -344,10 +344,10 @@ class CodexClient:
         if status == "failed":
             error = event.params.turn.error
             if error is not None and error.message.strip():
-                raise CodexExecutionError(f"Codex error: {error.message}")
-            raise CodexExecutionError("Codex error: turn failed")
+                raise DotBotExecutionError(f"Codex error: {error.message}")
+            raise DotBotExecutionError("Codex error: turn failed")
         if status == "interrupted":
-            raise CodexExecutionError("Codex error: turn interrupted")
+            raise DotBotExecutionError("Codex error: turn interrupted")
 
     def _handle_item_completed_event(
         self,
@@ -508,5 +508,5 @@ class CodexClient:
         if result:
             return result
         if parse_errors_seen:
-            raise CodexExecutionError("Codex stream parsing failed before producing output.")
-        raise CodexExecutionError(missing_output_message)
+            raise DotBotExecutionError("Codex stream parsing failed before producing output.")
+        raise DotBotExecutionError(missing_output_message)

@@ -18,7 +18,7 @@ from ..clients.github_client import GitHubClient, GitHubClientProtocol
 from ..clients.model_client import ModelClientProtocol, create_model_client
 from ..clients.openrouter_thread_store import OpenRouterThreadStore
 from ..core.config import ReviewConfig, make_debug
-from ..core.exceptions import CodexExecutionError, ReviewContractError, ReviewResumeError
+from ..core.exceptions import DotBotExecutionError, ReviewContractError, ReviewResumeError
 from ..core.github_types import (
     ChangedFileProtocol,
     IssueCommentLikeProtocol,
@@ -28,7 +28,7 @@ from ..core.github_types import (
 from ..core.models import (
     REVIEW_OUTPUT_SCHEMA,
     CarriedForwardReviewComment,
-    PriorCodexReviewComment,
+    PriorDotBotReviewComment,
     ReviewRunResult,
 )
 from ..core.review_state import PriorReviewKey
@@ -38,9 +38,9 @@ from ..review.artifacts import ReviewArtifacts
 from ..review.context_manager import ReviewContextWriter
 from ..review.dedupe import (
     SUMMARY_MARKER,
-    collect_codex_author_logins,
-    collect_prior_codex_review_comments,
-    render_prior_codex_comments_for_prompt,
+    collect_dotbot_author_logins,
+    collect_prior_dotbot_review_comments,
+    render_prior_dotbot_comments_for_prompt,
 )
 from ..review.posting import (
     ReviewPostingOutcome,
@@ -68,7 +68,7 @@ from ..review.review_prompt import (
 _DIFF_HEADER_RE = re.compile(r'^diff --git a/(?:[^\s]+) b/("(?:[^"\\]|\\.)*"|\S+)', re.MULTILINE)
 
 SUMMARY_TIP = (
-    'Tip: comment with "/codex address comments" to attempt automated fixes for unresolved '
+    'Tip: comment with "/dotbot address comments" to attempt automated fixes for unresolved '
     "review threads."
 )
 
@@ -106,7 +106,7 @@ def _extract_paths_from_unified_diff(diff_text: str) -> frozenset[str]:
 class _ReviewSnapshots:
     review_comments: list[ReviewCommentLikeProtocol]
     issue_comments: list[IssueCommentLikeProtocol]
-    prior_codex_comments: list[PriorCodexReviewComment]
+    prior_dotbot_comments: list[PriorDotBotReviewComment]
 
 
 @dataclass(frozen=True)
@@ -178,13 +178,15 @@ def _build_review_summary(
     posting_outcome: ReviewPostingOutcome,
     *,
     reviewed_head_sha: str,
+    model: str,
+    reasoning_effort: str,
 ) -> str:
     summary_lines = [
         SUMMARY_MARKER,
         render_review_summary_metadata(reviewed_head_sha),
         f"- Overall: {summary.overall_correctness.strip() or 'patch is correct'}",
         f"- New findings this run: {summary.current_findings_count}",
-        f"- Prior unresolved Codex findings still relevant: {summary.carried_forward_count}",
+        f"- Prior unresolved dotbot findings still relevant: {summary.carried_forward_count}",
         f"- Active findings total: {summary.active_findings_count}",
     ]
     if posting_outcome.dropped_count > 0:
@@ -207,6 +209,8 @@ def _build_review_summary(
         summary_lines.append(overall_explanation)
     summary_lines.append("")
     summary_lines.append(SUMMARY_TIP)
+    summary_lines.append("")
+    summary_lines.append(f"<sub>reviewed by dotbot · {model} · {reasoning_effort}</sub>")
     return "\n".join(summary_lines)
 
 
@@ -225,7 +229,7 @@ def _build_summary_explanation(
         verb = "applies" if carried_forward_count == 1 else "apply"
         return (
             "No new actionable bugs were found in the current changes, but "
-            f"{carried_forward_count} prior unresolved Codex {finding_noun} still {verb}, "
+            f"{carried_forward_count} prior unresolved dotbot {finding_noun} still {verb}, "
             "so the patch remains incorrect."
         )
     if current_findings_count > 0 and carried_forward_count == 0:
@@ -241,7 +245,7 @@ def _build_summary_explanation(
     prior_verb = "applies" if carried_forward_count == 1 else "apply"
     aggregate_summary = (
         f"{current_findings_count} new actionable {new_noun} {new_verb} identified in the current "
-        f"changes, and {carried_forward_count} prior unresolved Codex {prior_noun} still {prior_verb}, "
+        f"changes, and {carried_forward_count} prior unresolved dotbot {prior_noun} still {prior_verb}, "
         "so the patch remains incorrect."
     )
     if not overall_explanation:
@@ -266,7 +270,7 @@ class ReviewWorkflow:
         self._debug = make_debug(config)
 
     def _build_review_base_instructions(self, guidelines: str) -> str:
-        """Construct base instructions for Codex review runs."""
+        """Construct base instructions for dotbot review runs."""
         parts: list[str] = [
             "You are an autonomous code review assistant.",
             "Follow the review guidelines below verbatim while producing prioritized, actionable findings.",
@@ -305,14 +309,14 @@ class ReviewWorkflow:
         to find the prior state record on disk. Two sources cover the
         common cases:
 
-        * ``CODEX_REVIEW_PREVIOUS_HEAD_SHA`` — set by
+        * ``DOTBOT_REVIEW_PREVIOUS_HEAD_SHA`` — set by
           ``cli.review.prepare_resume_state`` from scanning prior PR
           summary comments. This is the action.yml-driven path.
         * Latest summary marker scraped from the in-memory issue
           comment list — covers local invocations and cases where the
           env var was not propagated.
         """
-        env_value = os.environ.get("CODEX_REVIEW_PREVIOUS_HEAD_SHA")
+        env_value = os.environ.get("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA")
         if isinstance(env_value, str):
             stripped = env_value.strip()
             if stripped:
@@ -320,7 +324,7 @@ class ReviewWorkflow:
         return self._latest_reviewed_head_sha(issue_comments)
 
     def _resume_cache_was_restored(self) -> bool:
-        cache_hit = os.environ.get("CODEX_REVIEW_CACHE_HIT")
+        cache_hit = os.environ.get("DOTBOT_REVIEW_CACHE_HIT")
         if cache_hit is None:
             return True
         return cache_hit.strip().lower() == "true"
@@ -331,7 +335,7 @@ class ReviewWorkflow:
         *,
         head_sha: str,
     ) -> _ReviewResumeState | None:
-        previous_reviewed_sha = os.environ.get("CODEX_REVIEW_PREVIOUS_HEAD_SHA")
+        previous_reviewed_sha = os.environ.get("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA")
         if previous_reviewed_sha is not None:
             previous_reviewed_sha = previous_reviewed_sha.strip() or None
         if previous_reviewed_sha is None:
@@ -639,16 +643,16 @@ class ReviewWorkflow:
         lines.append("</review_resume_context>")
         return "\n".join(lines)
 
-    def _build_schema_prompt(self, existing_comments: list[PriorCodexReviewComment]) -> str:
+    def _build_schema_prompt(self, existing_comments: list[PriorDotBotReviewComment]) -> str:
         """Build the turn-2 prompt for structured output, with optional dedup context."""
-        prompt_context = render_prior_codex_comments_for_prompt(existing_comments)
+        prompt_context = render_prior_dotbot_comments_for_prompt(existing_comments)
         lines: list[str] = []
         if prompt_context:
             lines.append(prompt_context)
             lines.append(
                 "Produce the JSON review output now. "
                 'Use "findings" only for new, non-redundant findings from this review run. '
-                'Use "carried_forward" only for entries from prior_codex_review_comments '
+                'Use "carried_forward" only for entries from prior_dotbot_review_comments '
                 "that still describe live issues in the current patch. "
                 "For each carried_forward entry, copy the exact current_code snippet into "
                 '"current_evidence" verbatim. '
@@ -707,9 +711,9 @@ class ReviewWorkflow:
             raise ReviewContractError(
                 f"Failed to retrieve issue comments for {self.config.repository}#{pr.number}: {exc}"
             ) from exc
-        prior_codex_comments: list[PriorCodexReviewComment] = []
-        codex_author_logins = collect_codex_author_logins(issue_comments_snapshot)
-        if codex_author_logins:
+        prior_dotbot_comments: list[PriorDotBotReviewComment] = []
+        dotbot_author_logins = collect_dotbot_author_logins(issue_comments_snapshot)
+        if dotbot_author_logins:
             try:
                 review_threads_snapshot = self.github_client.get_review_threads(pr)
             except Exception as exc:
@@ -717,31 +721,31 @@ class ReviewWorkflow:
                     "Failed to retrieve review thread state for "
                     f"{self.config.repository}#{pr.number}: {exc}"
                 ) from exc
-            prior_codex_comments = collect_prior_codex_review_comments(
+            prior_dotbot_comments = collect_prior_dotbot_review_comments(
                 review_threads_snapshot,
-                codex_author_logins,
+                dotbot_author_logins,
                 repo_root,
             )
             self._debug(
                 1,
-                "Prior Codex review thread matching: "
-                f"{len(codex_author_logins)} normalized author login(s), "
-                f"{len(prior_codex_comments)} unresolved thread(s) matched",
+                "Prior dotbot review thread matching: "
+                f"{len(dotbot_author_logins)} normalized author login(s), "
+                f"{len(prior_dotbot_comments)} unresolved thread(s) matched",
             )
         return _ReviewSnapshots(
             review_comments=review_comments_snapshot,
             issue_comments=issue_comments_snapshot,
-            prior_codex_comments=prior_codex_comments,
+            prior_dotbot_comments=prior_dotbot_comments,
         )
 
     def _sanitize_review_result(
         self,
         result: ReviewRunResult,
-        prior_codex_comments: list[PriorCodexReviewComment],
+        prior_dotbot_comments: list[PriorDotBotReviewComment],
     ) -> ReviewRunResult:
         carried_forward = self._normalize_carried_forward(
             result.carried_forward,
-            prior_codex_comments,
+            prior_dotbot_comments,
         )
         if carried_forward == result.carried_forward:
             return result
@@ -756,11 +760,11 @@ class ReviewWorkflow:
     def _normalize_carried_forward(
         self,
         raw_carried_forward: list[CarriedForwardReviewComment],
-        prior_codex_comments: list[PriorCodexReviewComment],
+        prior_dotbot_comments: list[PriorDotBotReviewComment],
     ) -> list[CarriedForwardReviewComment]:
         valid_comments = {
             comment.id: comment
-            for comment in prior_codex_comments
+            for comment in prior_dotbot_comments
             if comment.is_currently_applicable
         }
         normalized_carried_forward: list[CarriedForwardReviewComment] = []
@@ -823,7 +827,7 @@ class ReviewWorkflow:
             self._debug(1, f"Structured output was not valid JSON: {parse_err}")
             print("Model did not return valid JSON (truncated preview):")
             print(preview)
-            raise CodexExecutionError(f"JSON parsing error: {parse_err}") from parse_err
+            raise DotBotExecutionError(f"JSON parsing error: {parse_err}") from parse_err
 
         try:
             return ReviewRunResult.from_payload(payload)
@@ -906,9 +910,9 @@ class ReviewWorkflow:
 
         self._debug(2, f"Prompt length: {len(prompt)} chars")
 
-        schema_prompt = self._build_schema_prompt(snapshots.prior_codex_comments)
+        schema_prompt = self._build_schema_prompt(snapshots.prior_dotbot_comments)
 
-        print("Running Codex to generate review findings...", flush=True)
+        print("Running dotbot to generate review findings...", flush=True)
 
         output = self.model_client.execute_structured(
             prompt,
@@ -920,7 +924,7 @@ class ReviewWorkflow:
 
         parsed_result = self._sanitize_review_result(
             self._parse_structured_review_output(output),
-            snapshots.prior_codex_comments,
+            snapshots.prior_dotbot_comments,
         )
 
         posting_outcome = self._post_results(
@@ -937,6 +941,8 @@ class ReviewWorkflow:
             summary,
             posting_outcome,
             reviewed_head_sha=head_sha,
+            model=self.config.selected_model,
+            reasoning_effort=self.config.reasoning_effort or "medium",
         )
         self._publish_summary(pr, summary_text)
 
@@ -1036,7 +1042,7 @@ class ReviewWorkflow:
         )
 
     def _delete_prior_summary(self, pr: PullRequestLikeProtocol) -> list[str]:
-        """Delete prior Codex summary issue comments."""
+        """Delete prior dotbot summary issue comments."""
         warnings: list[str] = []
         comments = list(pr.get_issue_comments())
         for comment in comments:

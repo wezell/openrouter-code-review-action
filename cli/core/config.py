@@ -104,7 +104,7 @@ class ReviewConfig:
     dry_run: bool = False
     additional_prompt: str = ""
     repo_root: Path | None = None
-    context_dir_name: str = ".codex-context"
+    context_dir_name: str = ".dotbot-context"
     allowed_commenter_associations: tuple[str, ...] = _DEFAULT_ALLOWED_COMMENTER_ASSOCIATIONS
 
     @classmethod
@@ -188,7 +188,7 @@ class ReviewConfig:
         associations = self.allowed_commenter_associations
         if not associations:
             raise ConfigurationError(
-                "CODEX_ALLOWED_COMMENTER_ASSOCIATIONS must include at least one value"
+                "DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS must include at least one value"
             )
 
         invalid_associations = sorted(
@@ -199,7 +199,7 @@ class ReviewConfig:
         if invalid_associations:
             joined = ", ".join(invalid_associations)
             raise ConfigurationError(
-                "Invalid CODEX_ALLOWED_COMMENTER_ASSOCIATIONS values: "
+                "Invalid DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS values: "
                 f"{joined}. Allowed values: {', '.join(sorted(_VALID_COMMENTER_ASSOCIATIONS))}"
             )
 
@@ -260,7 +260,7 @@ class ReviewConfig:
     @property
     def resolved_context_dir_name(self) -> str:
         """Return the configured context directory name with the default fallback applied."""
-        return self.context_dir_name or ".codex-context"
+        return self.context_dir_name or ".dotbot-context"
 
     @property
     def selected_model(self) -> str:
@@ -332,28 +332,28 @@ def _config_values_from_environment() -> _ReviewConfigValues:
         "github_token": github_token,
         "repository": repository,
         "pr_number": pr_number,
-        "mode": os.environ.get("CODEX_MODE", "review").strip(),
-        "model_provider": os.environ.get("CODEX_PROVIDER", "openrouter").strip(),
+        "mode": os.environ.get("DOTBOT_MODE", "review").strip(),
+        "model_provider": os.environ.get("DOTBOT_PROVIDER", "openrouter").strip(),
         "openai_api_key": openai_api_key,
         "openrouter_api_key": os.environ.get("OPENROUTER_API_KEY", "").strip(),
-        "model_name": os.environ.get("CODEX_MODEL", "gpt-5.4").strip(),
+        "model_name": os.environ.get("DOTBOT_MODEL", "gpt-5.4").strip(),
         "review_model": os.environ.get("OPENROUTER_REVIEW_MODEL", DEFAULT_REVIEW_MODEL).strip()
         or DEFAULT_REVIEW_MODEL,
         "act_model": os.environ.get("OPENROUTER_ACT_MODEL", DEFAULT_ACT_MODEL).strip()
         or DEFAULT_ACT_MODEL,
         "config_path": os.environ.get("OPENROUTER_REVIEW_CONFIG", DEFAULT_CONFIG_PATH).strip()
         or DEFAULT_CONFIG_PATH,
-        "reasoning_effort": os.environ.get("CODEX_REASONING_EFFORT", "medium").strip(),
-        "web_search_mode": os.environ.get("CODEX_WEB_SEARCH_MODE", "live").strip(),
-        "act_instructions": os.environ.get("CODEX_ACT_INSTRUCTIONS", "").strip(),
+        "reasoning_effort": os.environ.get("DOTBOT_REASONING_EFFORT", "medium").strip(),
+        "web_search_mode": os.environ.get("DOTBOT_WEB_SEARCH_MODE", "live").strip(),
+        "act_instructions": os.environ.get("DOTBOT_ACT_INSTRUCTIONS", "").strip(),
         "debug_level": _parse_debug_level(os.environ.get("DEBUG_CODEREVIEW", "0")),
         "stream_output": os.environ.get("STREAM_AGENT_MESSAGES", "1") != "0",
         "dry_run": os.environ.get("DRY_RUN") == "1",
-        "additional_prompt": os.environ.get("CODEX_ADDITIONAL_PROMPT", "").strip(),
+        "additional_prompt": os.environ.get("DOTBOT_ADDITIONAL_PROMPT", "").strip(),
         "repo_root": repo_root,
-        "context_dir_name": ".codex-context",
+        "context_dir_name": ".dotbot-context",
         "allowed_commenter_associations": _parse_allowed_commenter_associations(
-            os.environ.get("CODEX_ALLOWED_COMMENTER_ASSOCIATIONS")
+            os.environ.get("DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS")
         ),
     }
 

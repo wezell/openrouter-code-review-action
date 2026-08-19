@@ -1,6 +1,6 @@
-# Codex Code Review CLI
+# dotbot Code Review CLI
 
-A modular, well-structured CLI for autonomous code review using Codex.
+A modular, well-structured CLI for autonomous code review using dotbot.
 
 ## Overview
 
@@ -20,7 +20,7 @@ cli/
 │   └── github_types.py        # Shared typed protocols for GitHub objects
 ├── clients/
 │   ├── __init__.py
-│   ├── codex_client.py        # Codex SDK wrapper for streaming + parsing
+│   ├── codex_client.py        # Codex SDK shim for streaming + parsing (legacy provider)
 │   ├── codex_event_debugger.py # Protocol event debug formatting helpers
 │   ├── github_client.py       # GitHub API helpers (PyGithub wrapper)
 │   └── git_ops.py             # Git subprocess helpers
@@ -44,7 +44,7 @@ cli/
 
 ### 1. **Modular Design**
 - **GitHub API**: PyGithub is wrapped in `clients/github_client.py`; review orchestration lives in `workflows/review_workflow.py`
-- **Codex API**: `codex-python` SDK is wrapped in `clients/codex_client.py`
+- **dotbot API**: the legacy OpenAI Codex SDK is wrapped in `clients/codex_client.py`; the OpenRouter client with the agent loop lives in `clients/openrouter_client.py`
 - **Patch Processing**: `review/patch_parser.py` contains utilities for parsing unified diffs
 - **Configuration**: `ReviewConfig` centralizes all configuration management
 - **Prompt Building**: `review/review_prompt.py` provides guideline loading and prompt composition helpers
@@ -91,15 +91,15 @@ python -m cli.main --repo owner/repo --pr 123 --debug 2
 When used via the composite action, the CLI runs in GitHub Actions mode automatically and reads the event payload to determine whether to run a full review or a comment-triggered edit.
 
 Review posting behavior:
-- Codex posts a PR-level issue comment with a review summary.
+- dotbot posts a PR-level issue comment with a review summary.
 - Findings are posted as standalone inline PR review comments on the relevant lines.
 
 Comment-triggered edits
 
 - Add a comment on the PR that starts with:
-  - `/codex <instructions>` or `/codex: <instructions>`
-- Bare `/codex` comments are ignored; the command must include instructions.
-- The remainder of the comment is passed to the coding agent. The workflow executes the agent with the configured Codex runtime settings for this environment, then commits and pushes resulting branch changes (unless dry-run).
+  - `/dotbot <instructions>` or `/dotbot: <instructions>`
+- Bare `/dotbot` comments are ignored; the command must include instructions.
+- The remainder of the comment is passed to the coding agent. The workflow executes the agent with the configured dotbot runtime settings for this environment, then commits and pushes resulting branch changes (unless dry-run).
 
 ### Environment Variables
 
@@ -107,21 +107,21 @@ Comment-triggered edits
 |----------|-------------|---------|
 | `GITHUB_TOKEN` | GitHub API token | *Required* |
 | `OPENAI_API_KEY` | OpenAI API key | *Required for OpenAI* |
-| `CODEX_MODE` | Operation mode (review/act) | `review` |
-| `CODEX_MODEL` | Model name | `gpt-5.4` |
-| `CODEX_PROVIDER` | Model provider | `openai` |
-| `CODEX_REASONING_EFFORT` | Reasoning effort level | `medium` |
-| `CODEX_ACT_INSTRUCTIONS` | Additional instructions for act mode | `` |
-| `CODEX_ALLOWED_COMMENTER_ASSOCIATIONS` | Comma-separated GitHub comment roles allowed to trigger act mode | `MEMBER,OWNER,COLLABORATOR` |
+| `DOTBOT_MODE` | Operation mode (review/act) | `review` |
+| `DOTBOT_MODEL` | Model name | `gpt-5.4` |
+| `DOTBOT_PROVIDER` | Model provider | `openai` |
+| `DOTBOT_REASONING_EFFORT` | Reasoning effort level | `medium` |
+| `DOTBOT_ACT_INSTRUCTIONS` | Additional instructions for act mode | `` |
+| `DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS` | Comma-separated GitHub comment roles allowed to trigger act mode | `MEMBER,OWNER,COLLABORATOR` |
 | `DEBUG_CODEREVIEW` | Debug level (0-2) | `0` |
 | `DRY_RUN` | Skip posting (1 for dry run) | `0` |
 
-Invalid `CODEX_ALLOWED_COMMENTER_ASSOCIATIONS` values fail fast during configuration loading.
+Invalid `DOTBOT_ALLOWED_COMMENTER_ASSOCIATIONS` values fail fast during configuration loading.
 
 ## Operation Modes
 
 - **`review`** (default): Analyzes PR diffs using built-in guidelines from `prompts/review.md`
-- **`act`**: Responds to `/codex` commands in PR comments to make autonomous code edits with optional custom instructions
+- **`act`**: Responds to `/dotbot` commands in PR comments to make autonomous code edits with optional custom instructions
 
 ## Testing
 
@@ -133,24 +133,24 @@ pytest tests/ -v
 
 ## Deduplication on Repeated Runs
 
-- The CLI detects if a prior Codex review exists on the PR (looks for a summary containing "Codex Autonomous Review:" or earlier inline review comments).
+- The CLI detects if a prior dotbot review exists on the PR (looks for a summary containing "dotbot code review:" or earlier inline review comments).
 - When detected, deduplication happens in three layers:
-  - **Codex-thread attribution**: only unresolved review threads whose root author matches a prior Codex summary author are reused as rerun context.
-  - **Inline semantic dedup**: the structured-output turn uses those prior Codex comments to decide which issues are new vs already covered.
+  - **dotbot-thread attribution**: only unresolved review threads whose root author matches a prior dotbot summary author are reused as rerun context.
+  - **Inline semantic dedup**: the structured-output turn uses those prior dotbot comments to decide which issues are new vs already covered.
   - **Re-adjudicated summary carry-forward**: the model returns prior comment IDs that still seem relevant, and the summary reports those separately from new findings.
-  - **Auto-resolution of fixed Codex threads**: the model can also mark prior unresolved Codex comments as fixed, and review mode resolves those GitHub review threads automatically.
+  - **Auto-resolution of fixed dotbot threads**: the model can also mark prior unresolved dotbot comments as fixed, and review mode resolves those GitHub review threads automatically.
 
 ## Review Resume Between Pushes
 
-- Review mode can resume the previous Codex thread when a PR receives new commits.
+- Review mode can resume the previous dotbot thread when a PR receives new commits.
 - The summary issue comment stores the last reviewed head SHA in hidden metadata.
-- GitHub Actions review runs restore an isolated review-only `CODEX_HOME` cache keyed by repository, PR number, model, and reviewed SHA.
+- GitHub Actions review runs restore an isolated review-only `DOTBOT_HOME` cache keyed by repository, PR number, model, and reviewed SHA.
 - When the prior reviewed SHA is still an ancestor of the current head and the cached session index contains a thread, the workflow resumes that thread and narrows the prompt to `previous_reviewed_sha..HEAD`.
 - Small incremental diffs are embedded directly in the prompt; larger deltas are referenced by commit range and inspected with git during the review turn.
 
 ### Customizing the Review Prompt
 
-- Provide extra reviewer guidance using env `CODEX_ADDITIONAL_PROMPT` (verbatim text). When set, it is appended after the built-in guidelines and before the line-selection rules.
+- Provide extra reviewer guidance using env `DOTBOT_ADDITIONAL_PROMPT` (verbatim text). When set, it is appended after the built-in guidelines and before the line-selection rules.
 
 ## Benefits
 

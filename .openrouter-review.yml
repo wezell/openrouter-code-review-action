@@ -14,7 +14,7 @@
 # To swap the model aider uses for autonomous edits, edit `act.model`.
 
 review:
-  model: anthropic/claude-opus-4.7
+  model: deepseek/deepseek-v4-pro-0813
   reasoning_effort: medium       # minimal | low | medium | high
   web_search_mode: live          # disabled | cached | live
 

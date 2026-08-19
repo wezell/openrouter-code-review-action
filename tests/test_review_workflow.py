@@ -10,7 +10,7 @@ import pytest
 
 from cli.clients.openrouter_thread_store import OpenRouterThreadStore
 from cli.core.config import ReviewConfig
-from cli.core.exceptions import CodexExecutionError, ReviewContractError, ReviewResumeError
+from cli.core.exceptions import DotBotExecutionError, ReviewContractError, ReviewResumeError
 from cli.core.models import InlineCommentPayload, ReviewThreadComment, ReviewThreadSnapshot
 from cli.review.artifacts import ReviewArtifacts
 from cli.review.posting import ReviewPostingOutcome
@@ -344,11 +344,11 @@ def test_process_review_posts_summary_and_passes_dedupe_context(
     assert context_writes[0][0] == 7
     assert context_writes[0][1] == ReviewArtifacts(
         repo_root=tmp_path,
-        context_dir_name=".codex-context",
+        context_dir_name=".dotbot-context",
     )
     assert context_writes[0][2:] == (1, 1)
     assert model_client.calls[0]["sandbox_mode"] == "danger-full-access"
-    assert "<prior_codex_review_comments>" in model_client.calls[0]["schema_prompt"]
+    assert "<prior_dotbot_review_comments>" in model_client.calls[0]["schema_prompt"]
     assert '"id": "comment-1"' in model_client.calls[0]["schema_prompt"]
     assert '"path": "src.py"' in model_client.calls[0]["schema_prompt"]
     assert '"current_code": "value = 1"' in model_client.calls[0]["schema_prompt"]
@@ -500,12 +500,12 @@ def test_process_review_summary_counts_carried_forward_codex_comments(tmp_path: 
     )
     assert "- New findings this run: 0" in pr.as_issue().created_comments[0]
     assert (
-        "- Prior unresolved Codex findings still relevant: 1" in pr.as_issue().created_comments[0]
+        "- Prior unresolved dotbot findings still relevant: 1" in pr.as_issue().created_comments[0]
     )
     assert "- Active findings total: 1" in pr.as_issue().created_comments[0]
     assert (
         "No new actionable bugs were found in the current changes, but 1 prior unresolved "
-        "Codex finding still applies, so the patch remains incorrect."
+        "dotbot finding still applies, so the patch remains incorrect."
         in pr.as_issue().created_comments[0]
     )
     assert "No additional non-redundant findings." not in pr.as_issue().created_comments[0]
@@ -561,7 +561,7 @@ def test_process_review_ignores_stale_prior_codex_thread(tmp_path: Path) -> None
 
     result = workflow.process_review(7)
 
-    assert "<prior_codex_review_comments>" not in model_client.calls[0]["schema_prompt"]
+    assert "<prior_dotbot_review_comments>" not in model_client.calls[0]["schema_prompt"]
     assert result.summary == ReviewSummary(
         overall_correctness="patch is correct",
         current_findings_count=0,
@@ -629,20 +629,20 @@ def test_process_review_matches_github_bot_logins_across_issue_and_thread_apis(
         "runs:\n"
         "  using: composite\n"
         "  steps:\n"
-        "    - name: Save review Codex cache\n"
+        "    - name: Save review dotbot cache\n"
         "      if: ${{ inputs.mode == 'review' && steps.run_codex_cli.outcome == 'success' && steps.review_resume_state.outputs.current_cache_key != '' && !(steps.review_codex_cache.outputs.cache-hit == 'true' && steps.review_resume_state.outputs.restore_key == steps.review_resume_state.outputs.current_cache_key) }}\n"
         "      uses: actions/cache/save@v4\n",
         encoding="utf-8",
     )
     stale_body = (
         "**Current code:**\n```yaml\n"
-        "    - name: Save review Codex cache\n"
+        "    - name: Save review dotbot cache\n"
         "      if: ${{ inputs.mode == 'review' && steps.run_codex_cli.outcome == 'success' && steps.review_resume_state.outputs.current_cache_key != '' }}\n"
         "      uses: actions/cache/save@v4\n"
         "```\n\n"
         "**Problem:** stale.\n\n"
         "**Fix:**\n```yaml\n"
-        "    - name: Save review Codex cache\n"
+        "    - name: Save review dotbot cache\n"
         "      if: ${{ inputs.mode == 'review' && steps.run_codex_cli.outcome == 'success' && steps.review_resume_state.outputs.current_cache_key != '' && !(steps.review_codex_cache.outputs.cache-hit == 'true' && steps.review_resume_state.outputs.restore_key == steps.review_resume_state.outputs.current_cache_key) }}\n"
         "      uses: actions/cache/save@v4\n"
         "```\n\n---"
@@ -931,8 +931,8 @@ def test_process_review_resumes_prior_thread_with_inline_incremental_diff(
         lambda codex_home, cwd: "thread-1",
     )
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
 
     workflow.process_review(7)
 
@@ -964,7 +964,7 @@ def test_process_review_resumes_openrouter_thread_from_thread_store(
         ],
         repository="owner/repo",
         pr_number=7,
-        model="anthropic/claude-opus-4.7",
+        model="deepseek/deepseek-v4-pro-0813",
     )
     prior_summary = _FakeIssueComment(
         (f"{SUMMARY_MARKER}\n{render_review_summary_metadata('prev-sha')}\nold summary"),
@@ -1014,8 +1014,8 @@ def test_process_review_resumes_openrouter_thread_from_thread_store(
         lambda revision_range: ["commit-1"],
     )
     monkeypatch.setenv("OPENROUTER_THREAD_DIR", str(thread_dir))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
     monkeypatch.delenv("CODEX_HOME", raising=False)
 
     workflow.process_review(7)
@@ -1070,8 +1070,8 @@ def test_process_review_falls_back_to_fresh_review_when_openrouter_thread_missin
     )
     monkeypatch.setattr("cli.workflows.review_workflow.git_is_ancestor", lambda older, newer: True)
     monkeypatch.setenv("OPENROUTER_THREAD_DIR", str(tmp_path / "empty-threads"))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
     monkeypatch.delenv("CODEX_HOME", raising=False)
 
     workflow.process_review(7)
@@ -1121,8 +1121,8 @@ def test_process_review_falls_back_to_fresh_review_when_prior_sha_is_not_ancesto
     )
     monkeypatch.setattr("cli.workflows.review_workflow.git_is_ancestor", lambda older, newer: False)
     monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
 
     workflow.process_review(7)
 
@@ -1144,8 +1144,8 @@ def test_process_review_raises_when_code_home_is_missing_after_cache_restore(
     )
 
     monkeypatch.setattr("cli.workflows.review_workflow.git_is_ancestor", lambda older, newer: True)
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
     monkeypatch.delenv("CODEX_HOME", raising=False)
 
     with pytest.raises(ReviewResumeError, match="CODEX_HOME is unset"):
@@ -1194,8 +1194,8 @@ def test_process_review_falls_back_to_fresh_review_when_cached_thread_lookup_fai
         lambda *args, **kwargs: ReviewPostingOutcome.empty(0),
     )
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
 
     workflow.process_review(7)
 
@@ -1249,8 +1249,8 @@ def test_process_review_falls_back_to_fresh_review_when_resume_ancestry_check_fa
         lambda *args, **kwargs: ReviewPostingOutcome.empty(0),
     )
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
 
     workflow.process_review(7)
 
@@ -1285,8 +1285,8 @@ def test_process_review_raises_when_incremental_git_context_fails(
 
     monkeypatch.setattr("cli.workflows.review_workflow.git_diff_text", _raise_diff)
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
-    monkeypatch.setenv("CODEX_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
-    monkeypatch.setenv("CODEX_REVIEW_CACHE_HIT", "true")
+    monkeypatch.setenv("DOTBOT_REVIEW_PREVIOUS_HEAD_SHA", "prev-sha")
+    monkeypatch.setenv("DOTBOT_REVIEW_CACHE_HIT", "true")
 
     with pytest.raises(ReviewResumeError, match="Failed to compute incremental review context"):
         workflow.process_review(7)
@@ -1314,7 +1314,7 @@ def test_process_review_raises_for_invalid_json(
         lambda *args, **kwargs: pytest.fail("_post_results should not run on invalid JSON"),
     )
 
-    with pytest.raises(CodexExecutionError, match="JSON parsing error"):
+    with pytest.raises(DotBotExecutionError, match="JSON parsing error"):
         workflow.process_review(7)
 
     assert pr.as_issue().created_comments == []
@@ -1469,7 +1469,7 @@ def test_process_review_wires_real_artifacts_and_inline_posting(tmp_path: Path) 
 
     result = workflow.process_review(7)
 
-    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".codex-context")
+    artifacts = ReviewArtifacts(repo_root=tmp_path, context_dir_name=".dotbot-context")
     assert artifacts.pr_metadata_path.exists()
     assert artifacts.review_comments_path.exists()
     assert artifacts.anchor_maps_path.exists()
@@ -1574,7 +1574,7 @@ def test_process_review_ignores_non_codex_threads_in_rerun_context(tmp_path: Pat
                 comments=[
                     ReviewThreadComment(
                         id="comment-0",
-                        body="Resolved Codex finding",
+                        body="Resolved dotbot finding",
                         path="src.py",
                         line=1,
                         original_line=1,
@@ -1640,7 +1640,7 @@ def test_process_review_ignores_non_codex_threads_in_rerun_context(tmp_path: Pat
 
     result = workflow.process_review(7)
 
-    assert "<prior_codex_review_comments>" not in fake_codex.calls[0]["schema_prompt"]
+    assert "<prior_dotbot_review_comments>" not in fake_codex.calls[0]["schema_prompt"]
     assert result.posting_outcome.prefiltered_count == 0
     assert len(github_client.inline_comments) == 1
     assert result.review.carried_forward_comment_ids == []
