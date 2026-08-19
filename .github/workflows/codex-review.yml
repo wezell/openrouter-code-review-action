@@ -29,8 +29,7 @@ jobs:
         uses: ./
         with:
           mode: review
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          model: gpt-5.4
+          openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
           reasoning_effort: medium
           debug_level: 1
 
@@ -61,6 +60,5 @@ jobs:
         uses: ./
         with:
           mode: act
-          openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-          model: gpt-5.4
+          openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
           debug_level: 1
