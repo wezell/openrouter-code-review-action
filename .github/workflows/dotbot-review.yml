@@ -29,9 +29,11 @@ jobs:
         uses: ./
         with:
           mode: review
+          model: deepseek/deepseek-v4-pro-0813
           openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
-          reasoning_effort: medium
+          reasoning_effort: high
           debug_level: 1
+          web_search_mode: true
 
   act:
     name: Act on /dotbot comments
