@@ -1,0 +1,329 @@
+diff --git a/core-web/libs/portlets/dot-content-drive/portlet/src/lib/components/dot-content-drive-toolbar/dot-content-drive-toolbar.component.html b/core-web/libs/portlets/dot-content-drive/portlet/src/lib/components/dot-content-drive-toolbar/dot-content-drive-toolbar.component.html
+index ad91ec13e7ef..ebf059ae2f18 100644
+--- a/core-web/libs/portlets/dot-content-drive/portlet/src/lib/components/dot-content-drive-toolbar/dot-content-drive-toolbar.component.html
++++ b/core-web/libs/portlets/dot-content-drive/portlet/src/lib/components/dot-content-drive-toolbar/dot-content-drive-toolbar.component.html
+@@ -1,6 +1,6 @@
+ <p-toolbar class="gap-1 h-full px-3 justify-start border-none!">
+     <div
+-        class="grid w-full grid-cols-[min-content_1fr] grid-rows-2 items-center transition-all duration-300 ease-in-out gap-y-1 py-3"
++        class="grid w-full grid-cols-[min-content_1fr] grid-rows-[auto_auto] items-center transition-all duration-300 ease-in-out gap-y-4 py-3"
+         [class.gap-x-1]="!$treeExpanded()"
+         [class.gap-x-0]="$treeExpanded()">
+         <dot-content-drive-tree-toggler data-testid="tree-toggler" [style]="$togglerStyles()" />
+@@ -32,12 +32,14 @@
+             }
+         </div>
+ 
+-        <div
+-            class="grid w-full gap-1 row-start-2 col-start-2"
+-            [class]="'grid-cols-[repeat(3,minmax(4.5rem,15rem))_1fr]'">
+-            <dot-content-drive-base-type-selector data-testid="base-type-selector" />
+-            <dot-content-drive-content-type-field data-testid="content-type-field" />
+-            <dot-content-drive-language-field data-testid="language-field" />
++        <div class="flex flex-wrap w-full gap-2 row-start-2 col-start-2">
++            <dot-content-drive-base-type-selector
++                class="min-w-56"
++                data-testid="base-type-selector" />
++            <dot-content-drive-content-type-field
++                class="min-w-56"
++                data-testid="content-type-field" />
++            <dot-content-drive-language-field class="min-w-56" data-testid="language-field" />
+         </div>
+     </div>
+ </p-toolbar>
+diff --git a/core-web/libs/portlets/dot-content-drive/ui/src/index.ts b/core-web/libs/portlets/dot-content-drive/ui/src/index.ts
+index 66aa63a10276..1bf6ecbc922b 100644
+--- a/core-web/libs/portlets/dot-content-drive/ui/src/index.ts
++++ b/core-web/libs/portlets/dot-content-drive/ui/src/index.ts
+@@ -1,4 +1,5 @@
+ export * from './lib/dot-folder-list-view/dot-folder-list-view.component';
+ export * from './lib/dot-tree-folder/dot-tree-folder.component';
++export * from './lib/dot-chip-filter/dot-chip-filter.component';
+ export * from './lib/shared/models';
+ export * from './lib/shared/constants';
+diff --git a/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.html b/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.html
+new file mode 100644
+index 000000000000..c2407e4bf502
+--- /dev/null
++++ b/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.html
+@@ -0,0 +1,18 @@
++<span class="truncate">
++    <span class="font-semibold" data-testid="chip-title">{{ title() }}</span>
++    @if (active()) {
++        <span data-testid="chip-values">: {{ valuesLabel() }}</span>
++    }
++</span>
++@if (active()) {
++    <button
++        type="button"
++        class="flex items-center justify-center bg-transparent border-0 p-0 cursor-pointer text-current"
++        [attr.aria-label]="'dot.common.remove' | dm"
++        (click)="onRemove($event)"
++        data-testid="chip-remove">
++        <i class="pi pi-times text-sm leading-none"></i>
++    </button>
++} @else {
++    <i class="pi pi-chevron-down text-sm leading-none"></i>
++}
+diff --git a/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.spec.ts b/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.spec.ts
+new file mode 100644
+index 000000000000..c0f1bff363a4
+--- /dev/null
++++ b/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.spec.ts
+@@ -0,0 +1,169 @@
++import { byTestId, createComponentFactory, Spectator } from '@ngneat/spectator/jest';
++
++import { DotMessageService } from '@dotcms/data-access';
++import { MockDotMessageService } from '@dotcms/utils-testing';
++
++import { DotChipFilterComponent } from './dot-chip-filter.component';
++
++describe('DotChipFilterComponent', () => {
++    let spectator: Spectator<DotChipFilterComponent>;
++
++    const createComponent = createComponentFactory({
++        component: DotChipFilterComponent,
++        providers: [
++            {
++                provide: DotMessageService,
++                useValue: new MockDotMessageService({
++                    'content-drive.chip-filter.overflow-label': '{0} and {1} more',
++                    'dot.common.remove': 'Remove'
++                })
++            }
++        ]
++    });
++
++    const getTitle = () => spectator.query(byTestId('chip-title'))?.textContent?.trim();
++    const getValues = () => spectator.query(byTestId('chip-values'))?.textContent?.trim();
++
++    beforeEach(() => {
++        spectator = createComponent({ props: { title: 'Type' } });
++    });
++
++    it('should create', () => {
++        expect(spectator.component).toBeTruthy();
++    });
++
++    describe('label', () => {
++        it('should always render the title', () => {
++            expect(getTitle()).toBe('Type');
++        });
++
++        it('should not render the values span when there are no selections', () => {
++            expect(spectator.query(byTestId('chip-values'))).toBeFalsy();
++        });
++
++        it('should render the values span when there is at least one selection', () => {
++            spectator.setInput('selections', ['Blog']);
++            expect(spectator.query(byTestId('chip-values'))).toBeTruthy();
++        });
++
++        it('should render one selection', () => {
++            spectator.setInput('selections', ['Blog']);
++            expect(getValues()).toBe(': Blog');
++        });
++
++        it('should render two selections joined by comma', () => {
++            spectator.setInput('selections', ['Blog', 'Activities']);
++            expect(getValues()).toBe(': Blog, Activities');
++        });
++
++        it.each([
++            [['Blog', 'News', 'Events'], ': Blog and 2 more'],
++            [['Blog', 'News', 'Events', 'Sports'], ': Blog and 3 more']
++        ])(
++            'should render first selection and remaining count for %s',
++            (selections: string[], expected: string) => {
++                spectator.setInput('selections', selections);
++                expect(getValues()).toBe(expected);
++            }
++        );
++    });
++
++    describe('active state', () => {
++        it('should show chevron-down icon when there are no selections', () => {
++            expect(spectator.query('.pi-chevron-down')).toBeTruthy();
++            expect(spectator.query('.pi-times')).toBeFalsy();
++        });
++
++        it('should show close icon when there are selections', () => {
++            spectator.setInput('selections', ['Blog']);
++            expect(spectator.query('.pi-times')).toBeTruthy();
++            expect(spectator.query('.pi-chevron-down')).toBeFalsy();
++        });
++    });
++
++    describe('outputs', () => {
++        it('should emit clicked on host click', () => {
++            const handler = jest.fn();
++            spectator.output('clicked').subscribe(handler);
++            spectator.click(spectator.element);
++            expect(handler).toHaveBeenCalled();
++        });
++
++        it('should emit clicked on Enter keydown', () => {
++            const handler = jest.fn();
++            spectator.output('clicked').subscribe(handler);
++            spectator.dispatchKeyboardEvent(spectator.element, 'keydown', 'Enter');
++            expect(handler).toHaveBeenCalled();
++        });
++
++        it('should emit clicked on Space keydown', () => {
++            const handler = jest.fn();
++            spectator.output('clicked').subscribe(handler);
++            spectator.dispatchKeyboardEvent(spectator.element, 'keydown', ' ');
++            expect(handler).toHaveBeenCalled();
++        });
++
++        it('should emit removed when the close button is clicked', () => {
++            spectator.setInput('selections', ['Blog']);
++            spectator.detectChanges();
++
++            const handler = jest.fn();
++            spectator.output('removed').subscribe(handler);
++            spectator.click(byTestId('chip-remove'));
++            expect(handler).toHaveBeenCalled();
++        });
++
++        it('should not emit clicked when the close button is clicked', () => {
++            spectator.setInput('selections', ['Blog']);
++            spectator.detectChanges();
++
++            const clickedHandler = jest.fn();
++            spectator.output('clicked').subscribe(clickedHandler);
++            spectator.click(byTestId('chip-remove'));
++            expect(clickedHandler).not.toHaveBeenCalled();
++        });
++
++        it('should not emit clicked when Enter is pressed on the close button', () => {
++            spectator.setInput('selections', ['Blog']);
++            spectator.detectChanges();
++
++            const clickedHandler = jest.fn();
++            spectator.output('clicked').subscribe(clickedHandler);
++
++            const removeBtn = spectator.query(byTestId('chip-remove')) as HTMLElement;
++            expect(removeBtn).toBeTruthy();
++            removeBtn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
++
++            expect(clickedHandler).not.toHaveBeenCalled();
++        });
++
++        it('should not emit clicked when Space is pressed on the close button', () => {
++            spectator.setInput('selections', ['Blog']);
++            spectator.detectChanges();
++
++            const clickedHandler = jest.fn();
++            spectator.output('clicked').subscribe(clickedHandler);
++
++            const removeBtn = spectator.query(byTestId('chip-remove')) as HTMLElement;
++            expect(removeBtn).toBeTruthy();
++            removeBtn.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
++
++            expect(clickedHandler).not.toHaveBeenCalled();
++        });
++    });
++
++    describe('accessibility', () => {
++        it('should expose role=button and tabindex=0 on the host', () => {
++            expect(spectator.element.getAttribute('role')).toBe('button');
++            expect(spectator.element.getAttribute('tabindex')).toBe('0');
++        });
++
++        it('should label the close button with the remove translation', () => {
++            spectator.setInput('selections', ['Blog']);
++            spectator.detectChanges();
++
++            const removeBtn = spectator.query(byTestId('chip-remove'));
++            expect(removeBtn?.getAttribute('aria-label')).toBe('Remove');
++        });
++    });
++});
+diff --git a/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.ts b/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.ts
+new file mode 100644
+index 000000000000..5c32c49c2c21
+--- /dev/null
++++ b/core-web/libs/portlets/dot-content-drive/ui/src/lib/dot-chip-filter/dot-chip-filter.component.ts
+@@ -0,0 +1,68 @@
++import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
++
++import { DotMessageService } from '@dotcms/data-access';
++import { DotMessagePipe } from '@dotcms/ui';
++
++const BASE_CLASSES =
++    'flex items-center justify-between gap-2 px-3 py-1.5 rounded-full text-sm font-normal leading-normal cursor-pointer select-none whitespace-nowrap min-w-[140px] transition-[color,background-color,border-color,width] duration-200 ease-out';
++
++const INACTIVE_CLASSES = 'bg-white text-slate-600 border border-slate-200 hover:border-primary-400';
++
++const ACTIVE_CLASSES =
++    'bg-primary-100 text-primary-900 border border-transparent hover:bg-primary-200';
++
++@Component({
++    selector: 'dot-chip-filter',
++    imports: [DotMessagePipe],
++    templateUrl: './dot-chip-filter.component.html',
++    changeDetection: ChangeDetectionStrategy.OnPush,
++    host: {
++        '[class]': 'stateClasses()',
++        role: 'button',
++        '[attr.tabindex]': 'tabIndex()',
++        '(click)': 'clicked.emit()',
++        '(keydown.enter)': 'onHostKeydown($event)',
++        '(keydown.space)': 'onHostKeydown($event)'
++    }
++})
++export class DotChipFilterComponent {
++    readonly #dotMessageService = inject(DotMessageService);
++
++    title = input.required<string>();
++    selections = input<string[]>([]);
++    tabIndex = input<number>(0);
++
++    clicked = output<void>();
++    removed = output<void>();
++
++    protected readonly active = computed(() => this.selections().length > 0);
++
++    protected readonly valuesLabel = computed(() => {
++        const selections = this.selections();
++
++        if (!selections.length) return '';
++        if (selections.length <= 2) return selections.join(', ');
++
++        return this.#dotMessageService.get(
++            'content-drive.chip-filter.overflow-label',
++            selections[0],
++            String(selections.length - 1)
++        );
++    });
++
++    protected readonly stateClasses = computed(
++        () => `${BASE_CLASSES} ${this.active() ? ACTIVE_CLASSES : INACTIVE_CLASSES}`
++    );
++
++    protected onRemove(event: Event): void {
++        event.stopPropagation();
++        this.removed.emit();
++    }
++
++    protected onHostKeydown(event: Event): void {
++        // Ignore keydowns that bubbled from a descendant (e.g. the close button)
++        if (event.target && event.target !== event.currentTarget) return;
++        if ((event as KeyboardEvent).key === ' ') event.preventDefault();
++        this.clicked.emit();
++    }
++}
+diff --git a/dotCMS/src/main/webapp/WEB-INF/messages/Language.properties b/dotCMS/src/main/webapp/WEB-INF/messages/Language.properties
+index cd8e42040abf..86e8282b83b6 100644
+--- a/dotCMS/src/main/webapp/WEB-INF/messages/Language.properties
++++ b/dotCMS/src/main/webapp/WEB-INF/messages/Language.properties
+@@ -6393,6 +6393,8 @@ content-drive.all-folder.label=All
+ content-drive.toast.download-success=Downloading {0}
+ content-drive.toast.download-success-detail=The download has started.
+ 
++content-drive.chip-filter.overflow-label={0} and {1} more
++
+ edit.content.preview-link=Preview
+ 
+ relative.date.now=Now

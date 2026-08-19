@@ -1,0 +1,241 @@
+{
+  "generated_at": "2026-05-07T17:07:39Z",
+  "generator": "eval/overlap_aggregate.py",
+  "metrics": {
+    "macro": {
+      "averaged_over_prs": 0,
+      "f1": null,
+      "precision": null,
+      "recall": null
+    },
+    "micro": {
+      "f1": null,
+      "false_negative": 0,
+      "false_positive": 0,
+      "precision": null,
+      "recall": null,
+      "true_positive": 0
+    },
+    "severity_match_rate": null
+  },
+  "per_category": {
+    "P0": {
+      "codex_total": 0,
+      "matched_codex": 0,
+      "matched_openrouter": 0,
+      "openrouter_total": 0,
+      "precision": null,
+      "recall": null
+    },
+    "P1": {
+      "codex_total": 0,
+      "matched_codex": 0,
+      "matched_openrouter": 0,
+      "openrouter_total": 0,
+      "precision": null,
+      "recall": null
+    },
+    "P2": {
+      "codex_total": 0,
+      "matched_codex": 0,
+      "matched_openrouter": 0,
+      "openrouter_total": 0,
+      "precision": null,
+      "recall": null
+    },
+    "P3": {
+      "codex_total": 0,
+      "matched_codex": 0,
+      "matched_openrouter": 0,
+      "openrouter_total": 0,
+      "precision": null,
+      "recall": null
+    },
+    "unknown": {
+      "codex_total": 0,
+      "matched_codex": 0,
+      "matched_openrouter": 0,
+      "openrouter_total": 0,
+      "precision": null,
+      "recall": null
+    }
+  },
+  "prs": [
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35567",
+      "head_sha_baseline": "922996001a7e092e2a591db45b74d7603d085117",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35567",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35509",
+      "head_sha_baseline": "89f68df8cd5b5e1c83c638092548dfecd0b8c23a",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35509",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35498",
+      "head_sha_baseline": "fec3bfeb56251911ebf21f566141e1b356b7b695",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35498",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35458",
+      "head_sha_baseline": "61d6d1abdf8abb18a84887e3f8a2a34501b5bfee",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35458",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35491",
+      "head_sha_baseline": "467b27607aec3df2a1520a9ab35dd83fef624a88",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35491",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35469",
+      "head_sha_baseline": "a8ce11cdb2bb11261dbbcac19fcdf9a6ab917fb0",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35469",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35518",
+      "head_sha_baseline": "f31e33c1d2280fea6a3b7d9a277c14fb51053e6c",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35518",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35449",
+      "head_sha_baseline": "76fb121bddeac5943fde9060014546a984dd6a5e",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35449",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35465",
+      "head_sha_baseline": "855c7d5ce8522b2bfdd0b512ade9f641ec198280",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35465",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    },
+    {
+      "codex_findings": 0,
+      "codex_only": 0,
+      "f1": null,
+      "fixture_pr_id": "pr-35522",
+      "head_sha_baseline": "f495ee3b148512acdaabccccbea6d5650a205998",
+      "head_sha_candidate": null,
+      "matched_pairs": 0,
+      "openrouter_findings": 0,
+      "openrouter_only": 0,
+      "pr_id": "dotcms-core-35522",
+      "precision": null,
+      "recall": null,
+      "severity_match": 0,
+      "status": "pending"
+    }
+  ],
+  "ready_count": 0,
+  "sample_size": 10,
+  "schema_version": "1",
+  "status_counts": {
+    "pending": 10
+  },
+  "target_source": "registry",
+  "tolerance_lines": 3,
+  "totals": {
+    "codex_findings": 0,
+    "codex_only": 0,
+    "matched_pairs": 0,
+    "openrouter_findings": 0,
+    "openrouter_only": 0,
+    "severity_match": 0
+  }
+}

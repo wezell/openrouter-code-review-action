@@ -1,0 +1,113 @@
+diff --git a/dotCMS/src/main/java/com/dotcms/rest/api/v1/content/ContentResource.java b/dotCMS/src/main/java/com/dotcms/rest/api/v1/content/ContentResource.java
+index 1512676b66de..fb752032234f 100644
+--- a/dotCMS/src/main/java/com/dotcms/rest/api/v1/content/ContentResource.java
++++ b/dotCMS/src/main/java/com/dotcms/rest/api/v1/content/ContentResource.java
+@@ -459,7 +459,7 @@ public ResponseEntityCountView getAllContentletReferencesCount(
+ 
+         new WebResource.InitBuilder(this.webResource)
+                         .requestAndResponse(request, response)
+-                        .requiredAnonAccess(AnonymousAccess.READ)
++                        .requiredAnonAccess(AnonymousAccess.NONE)
+                         .init();
+ 
+         Logger.debug(this, () -> "Finding the counts for contentlet id: " + identifier);
+@@ -494,6 +494,9 @@ public ResponseEntityCountView getAllContentletReferencesCount(
+         @ApiResponse(responseCode = "401",
+                     description = "Unauthorized - authentication required",
+                     content = @Content(mediaType = "application/json")),
++        @ApiResponse(responseCode = "403",
++                    description = "Forbidden - user lacks read permission on the contentlet",
++                    content = @Content(mediaType = "application/json")),
+         @ApiResponse(responseCode = "404",
+                     description = "Not found - contentlet not found",
+                     content = @Content(mediaType = "application/json"))
+@@ -512,7 +515,7 @@ public ResponseEntityContentReferenceListView getContentletReferences(
+ 
+         final User user = new WebResource.InitBuilder(this.webResource)
+                 .requestAndResponse(request, response)
+-                .requiredAnonAccess(AnonymousAccess.READ)
++                .requiredAnonAccess(AnonymousAccess.NONE)
+                 .init().getUser();
+ 
+         Logger.debug(this, () -> "Finding the references for contentlet id: " + inodeOrIdentifier);
+diff --git a/dotCMS/src/main/webapp/WEB-INF/openapi/openapi.yaml b/dotCMS/src/main/webapp/WEB-INF/openapi/openapi.yaml
+index 207f31cd4554..899738fc6853 100644
+--- a/dotCMS/src/main/webapp/WEB-INF/openapi/openapi.yaml
++++ b/dotCMS/src/main/webapp/WEB-INF/openapi/openapi.yaml
+@@ -7374,6 +7374,10 @@ paths:
+           content:
+             application/json: {}
+           description: Unauthorized - authentication required
++        "403":
++          content:
++            application/json: {}
++          description: Forbidden - user lacks read permission on the contentlet
+         "404":
+           content:
+             application/json: {}
+diff --git a/dotcms-integration/src/test/java/com/dotcms/rest/api/v1/content/ContentResourceIntegrationTest.java b/dotcms-integration/src/test/java/com/dotcms/rest/api/v1/content/ContentResourceIntegrationTest.java
+index 172805a7228c..4beb60c3077a 100644
+--- a/dotcms-integration/src/test/java/com/dotcms/rest/api/v1/content/ContentResourceIntegrationTest.java
++++ b/dotcms-integration/src/test/java/com/dotcms/rest/api/v1/content/ContentResourceIntegrationTest.java
+@@ -981,6 +981,61 @@ private static HttpServletRequest createRequestForUser(final String email,
+         return request;
+     }
+ 
++    /**
++     * Method to test: {@link ContentResource#getContentletReferences}
++     * <p>
++     * Given scenario: An unauthenticated (anonymous) HTTP request hits the endpoint,
++     * which requires {@code AnonymousAccess.NONE}.
++     * <p>
++     * Expected result: {@link com.dotcms.rest.exception.SecurityException} is thrown,
++     * mapping to HTTP 401 — anonymous callers are rejected before any content lookup.
++     */
++    @Test(expected = com.dotcms.rest.exception.SecurityException.class)
++    public void test_getContentletReferences_anonymousRequest_throwsUnauthorized()
++            throws Exception {
++        final Language english = APILocator.getLanguageAPI().getDefaultLanguage();
++        final Structure structure = new StructureDataGen().nextPersisted();
++        final Contentlet content = new ContentletDataGen(structure.getInode())
++                .languageId(english.getId()).nextPersisted();
++
++        new ContentResource().getContentletReferences(
++                createAnonymousRequest(), mock(HttpServletResponse.class),
++                content.getIdentifier(), "");
++    }
++
++    /**
++     * Method to test: {@link ContentResource#getAllContentletReferencesCount}
++     * <p>
++     * Given scenario: An unauthenticated (anonymous) HTTP request hits the endpoint,
++     * which requires {@code AnonymousAccess.NONE}.
++     * <p>
++     * Expected result: {@link com.dotcms.rest.exception.SecurityException} is thrown,
++     * mapping to HTTP 401 — anonymous callers are rejected before any count lookup.
++     */
++    @Test(expected = com.dotcms.rest.exception.SecurityException.class)
++    public void test_getAllContentletReferencesCount_anonymousRequest_throwsUnauthorized()
++            throws Exception {
++        final Language english = APILocator.getLanguageAPI().getDefaultLanguage();
++        final Structure structure = new StructureDataGen().nextPersisted();
++        final Contentlet content = new ContentletDataGen(structure.getInode())
++                .languageId(english.getId()).nextPersisted();
++
++        new ContentResource().getAllContentletReferencesCount(
++                createAnonymousRequest(), mock(HttpServletResponse.class),
++                content.getIdentifier());
++    }
++
++    /**
++     * Creates an unauthenticated (anonymous) HttpServletRequest with no user or auth header.
++     */
++    private static HttpServletRequest createAnonymousRequest() {
++        return new MockAttributeRequest(
++                new MockSessionRequest(
++                        new MockHttpRequestIntegrationTest("localhost", "/").request()
++                ).request()
++        ).request();
++    }
++
+     /**
+      * Creates an authenticated HttpServletRequest with admin credentials.
+      */

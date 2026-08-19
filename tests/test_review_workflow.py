@@ -376,6 +376,7 @@ def test_process_review_posts_summary_and_passes_dedupe_context(
                 "absolute_file_path": str((tmp_path / "src.py").resolve()),
                 "line_range": {"start": 1, "end": 1},
             },
+            "side": None,
         },
     ]
 

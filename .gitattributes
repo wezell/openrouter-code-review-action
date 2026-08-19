@@ -1,0 +1,4 @@
+# Treat baseline diff fixtures as byte-stable: never normalize EOLs.
+# These bytes are hashed by tests/test_baseline_fixtures.py and any
+# CRLF↔LF flip would silently break the parity gate.
+tests/fixtures/baseline/**/*.patch -text
