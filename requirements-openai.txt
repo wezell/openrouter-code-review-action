@@ -1,0 +1,5 @@
+# Legacy OpenAI Codex SDK provider (DOTBOT_PROVIDER=openai) plus the
+# eval Codex-baseline runner. The default OpenRouter path does NOT need
+# this (it uses stdlib urllib); only install when the legacy provider is
+# selected to keep the common setup fast.
+codex-python==1.122.0
