@@ -57,7 +57,11 @@ jobs:
           # separate release-published retag workflow on the same refs.
           sha=$(git rev-parse HEAD)
           for t in v1 latest; do
+            # PATCH with typed boolean force (capital -F sends JSON true).
+            # If the ref doesn't exist yet (first release), fall back to POST.
             gh api -X PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/${t}" \
-              -f "sha=${sha}" -f "force=true" >/dev/null
+              -f "sha=${sha}" -F "force=true" >/dev/null 2>&1 ||
+              gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                -f "ref=refs/tags/${t}" -f "sha=${sha}" >/dev/null
             echo "Retagged ${t} -> ${sha}"
           done
