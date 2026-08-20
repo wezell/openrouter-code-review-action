@@ -51,3 +51,13 @@ jobs:
             --title "dotbot code review ${next}" \
             --latest \
             --notes "Auto-generated release from merge to main."
+          # Point the moving v1/latest tags at this release's commit so @v1
+          # consumers always get the newest merged code, independent of the
+          # separate release-published retag workflow.
+          sha=$(git rev-parse HEAD)
+          for t in v1 latest; do
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${t}" >/dev/null 2>&1 || true
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f "ref=refs/tags/${t}" -f "sha=${sha}" >/dev/null
+            echo "Retagged ${t} -> ${sha}"
+          done
