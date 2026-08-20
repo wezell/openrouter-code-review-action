@@ -18,9 +18,19 @@ REVIEW_RESUME_CACHE_VERSION = "v1"
 MAX_INLINE_INCREMENTAL_DIFF_LINES = 500
 
 
-def render_review_summary_metadata(reviewed_head_sha: str) -> str:
+def render_review_summary_metadata(
+    reviewed_head_sha: str,
+    *,
+    model: str | None = None,
+    reasoning_effort: str | None = None,
+) -> str:
+    payload_data: dict[str, Any] = {"reviewed_head_sha": reviewed_head_sha}
+    if model is not None:
+        payload_data["model"] = model
+    if reasoning_effort is not None:
+        payload_data["reasoning_effort"] = reasoning_effort
     payload = json.dumps(
-        {"reviewed_head_sha": reviewed_head_sha},
+        payload_data,
         ensure_ascii=True,
         separators=(",", ":"),
     )
@@ -40,6 +50,25 @@ def parse_reviewed_head_sha(summary_body: str) -> str | None:
         return None
     normalized = reviewed_head_sha.strip()
     return normalized or None
+
+
+def parse_review_summary_meta(summary_body: str) -> dict[str, Any]:
+    """Return the full metadata payload of a dotbot summary comment.
+
+    Inverse of :func:`render_review_summary_metadata`. Keys that are missing
+    (e.g. ``model``/``reasoning_effort`` on summaries written before the
+    multi-model change) are omitted so callers can treat them as unknown.
+    """
+    match = SUMMARY_METADATA_RE.search(summary_body)
+    if match is None:
+        return {}
+    try:
+        payload = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return payload
 
 
 def compute_review_cache_key(

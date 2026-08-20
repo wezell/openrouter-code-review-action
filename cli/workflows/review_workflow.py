@@ -52,6 +52,7 @@ from ..review.posting import (
 from ..review.resume_state import (
     MAX_INLINE_INCREMENTAL_DIFF_LINES,
     load_latest_thread_id,
+    parse_review_summary_meta,
     parse_reviewed_head_sha,
     render_review_summary_metadata,
 )
@@ -183,7 +184,12 @@ def _build_review_summary(
 ) -> str:
     summary_lines = [
         SUMMARY_MARKER,
-        render_review_summary_metadata(reviewed_head_sha),
+        render_review_summary_metadata(
+            reviewed_head_sha,
+            model=model,
+            reasoning_effort=reasoning_effort,
+        ),
+        f"- Reviewer: {model} ({reasoning_effort})",
         f"- Overall: {summary.overall_correctness.strip() or 'patch is correct'}",
         f"- New findings this run: {summary.current_findings_count}",
         f"- Prior unresolved dotbot findings still relevant: {summary.carried_forward_count}",
@@ -836,18 +842,27 @@ class ReviewWorkflow:
         except Exception as exc:
             raise ReviewContractError(f"Invalid structured review output: {exc}") from exc
 
-    def _publish_summary(self, pr: PullRequestLikeProtocol, summary: str) -> None:
+    def _publish_summary(self, pr: PullRequestLikeProtocol, summary: str, *, model: str) -> None:
         if self.config.dry_run:
             self._debug(1, "DRY_RUN: would refresh summary issue comment")
             return
 
-        delete_warnings = self._delete_prior_summary(pr)
+        delete_warnings = self._delete_prior_summary(pr, model=model)
         for warning in delete_warnings:
             print(warning, file=sys.stderr)
         pr.as_issue().create_comment(summary)
 
     def process_review(self, pr_number: int) -> ReviewWorkflowResult:
-        """Process a code review for the given pull request."""
+        """Process a code review for the given pull request.
+
+        When a multi-model roster is configured (``review.models`` or
+        ``DOTBOT_REVIEW_MODELS``), each model runs the full pipeline in
+        sequence and posts its own findings and summary. Review state
+        (resume threads, SHA-delta, cache keys) is isolated per model via
+        ``config.review_model``, and snapshots are refreshed between models
+        so a later model sees the earlier models' posted inline comments as
+        prior dotbot context — that is the disagreement/refutation pass.
+        """
         self._debug(1, f"Processing review for {self.config.repository} PR #{pr_number}")
 
         pr = self.github_client.get_pr(pr_number)
@@ -859,7 +874,40 @@ class ReviewWorkflow:
         repo_root = self.config.resolved_repo_root
         context_dir_name = self.config.resolved_context_dir_name
         artifacts = ReviewArtifacts(repo_root=repo_root, context_dir_name=context_dir_name)
-        snapshots = self._capture_review_snapshots(pr, repo_root=repo_root)
+
+        roster = self.config.selected_review_models
+        self._debug(1, f"Reviewer roster: {len(roster)} model(s) -> {', '.join(roster)}")
+
+        results: list[ReviewWorkflowResult] = []
+        for index, model in enumerate(roster):
+            original_model = self.config.review_model
+            self.config.review_model = model
+            try:
+                if index > 0:
+                    snapshots = self._capture_review_snapshots(pr, repo_root=repo_root)
+                else:
+                    snapshots = self._capture_review_snapshots(pr, repo_root=repo_root)
+                self._refresh_context_artifacts(pr, artifacts, snapshots)
+                result = self._run_review_model(
+                    pr,
+                    changed_files=changed_files,
+                    rename_map=rename_map,
+                    head_sha=head_sha,
+                    artifacts=artifacts,
+                    snapshots=snapshots,
+                    model=model,
+                )
+                results.append(result)
+            finally:
+                self.config.review_model = original_model
+        return results[-1]
+
+    def _refresh_context_artifacts(
+        self,
+        pr: PullRequestLikeProtocol,
+        artifacts: ReviewArtifacts,
+        snapshots: _ReviewSnapshots,
+    ) -> None:
         self.context_manager.write_context_artifacts(
             pr,
             artifacts,
@@ -867,6 +915,18 @@ class ReviewWorkflow:
             review_comments=snapshots.review_comments,
         )
 
+    def _run_review_model(
+        self,
+        pr: PullRequestLikeProtocol,
+        *,
+        changed_files: list[ChangedFileProtocol],
+        rename_map: dict[str, str],
+        head_sha: str,
+        artifacts: ReviewArtifacts,
+        snapshots: _ReviewSnapshots,
+        model: str,
+    ) -> ReviewWorkflowResult:
+        """Run a single-model review pass and post its findings."""
         guidelines = load_guidelines(self.config)
         base_instructions = self._build_review_base_instructions(guidelines)
         resume_state = self._resolve_review_resume_state(
@@ -912,10 +972,14 @@ class ReviewWorkflow:
 
         schema_prompt = self._build_schema_prompt(snapshots.prior_dotbot_comments)
 
-        print("Running dotbot to generate review findings...", flush=True)
+        print(f"Running dotbot ({model}) to generate review findings...", flush=True)
 
+        effective_model = (
+            self.config.model_name if self.config.model_provider == "openai" else model
+        )
         output = self.model_client.execute_structured(
             prompt,
+            model_name=effective_model,
             sandbox_mode="danger-full-access",
             output_schema=REVIEW_OUTPUT_SCHEMA,
             schema_prompt=schema_prompt,
@@ -941,10 +1005,10 @@ class ReviewWorkflow:
             summary,
             posting_outcome,
             reviewed_head_sha=head_sha,
-            model=self.config.selected_model,
+            model=effective_model,
             reasoning_effort=self.config.reasoning_effort or "medium",
         )
-        self._publish_summary(pr, summary_text)
+        self._publish_summary(pr, summary_text, model=effective_model)
 
         return ReviewWorkflowResult(
             review=parsed_result,
@@ -1041,14 +1105,25 @@ class ReviewWorkflow:
             remapped_post_result=remapped_post_result,
         )
 
-    def _delete_prior_summary(self, pr: PullRequestLikeProtocol) -> list[str]:
-        """Delete prior dotbot summary issue comments."""
+    def _delete_prior_summary(self, pr: PullRequestLikeProtocol, *, model: str) -> list[str]:
+        """Delete prior dotbot summary issue comments for the given model.
+
+        Older summaries (written before the multi-model change) have no
+        ``model`` in their metadata and are always superseded, so they are
+        deleted regardless. Summaries carrying a model only supersede
+        themselves — in a multi-model roster each reviewer keeps its own
+        summary line.
+        """
         warnings: list[str] = []
         comments = list(pr.get_issue_comments())
         for comment in comments:
             comment_body = comment.body
             body = comment_body.strip() if isinstance(comment_body, str) else ""
             if SUMMARY_MARKER not in body:
+                continue
+            meta = parse_review_summary_meta(body)
+            prior_model = meta.get("model")
+            if isinstance(prior_model, str) and prior_model and prior_model != model:
                 continue
             try:
                 comment.delete()

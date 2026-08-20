@@ -13,6 +13,7 @@ from cli.review.resume_state import (
     extract_current_head_sha,
     find_previous_reviewed_sha,
     load_latest_thread_id,
+    parse_review_summary_meta,
     parse_reviewed_head_sha,
     render_review_summary_metadata,
 )
@@ -23,6 +24,31 @@ def test_review_summary_metadata_round_trips() -> None:
 
     assert parse_reviewed_head_sha(f"dotbot Autonomous Review:\n{metadata}") == "deadbeef"
     assert parse_reviewed_head_sha("dotbot Autonomous Review:\n<!-- broken -->") is None
+
+
+def test_review_summary_metadata_carries_model_and_effort() -> None:
+    metadata = render_review_summary_metadata(
+        "deadbeef",
+        model="openai/gpt-5",
+        reasoning_effort="high",
+    )
+
+    assert parse_reviewed_head_sha(metadata) == "deadbeef"
+    assert parse_review_summary_meta(metadata) == {
+        "reviewed_head_sha": "deadbeef",
+        "model": "openai/gpt-5",
+        "reasoning_effort": "high",
+    }
+
+
+def test_review_summary_meta_tolerates_missing_model_and_effort() -> None:
+    # Older summaries written before the multi-model change have no model.
+    metadata = render_review_summary_metadata("deadbeef")
+    parsed = parse_review_summary_meta(metadata)
+
+    assert "model" not in parsed
+    assert "reasoning_effort" not in parsed
+    assert parsed["reviewed_head_sha"] == "deadbeef"
 
 
 def test_compute_review_cache_key_sanitizes_components() -> None:

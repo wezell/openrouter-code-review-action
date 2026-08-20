@@ -113,6 +113,9 @@ action-input change required.
 # .openrouter-review.yml
 review:
   model: deepseek/deepseek-v4-pro-0813    # change this line to swap review model
+  models:                                  # optional — extra reviewers to "fight"
+    - openai/gpt-5
+    - google/gemini-2.5-pro
   reasoning_effort: medium            # optional — minimal | low | medium | high
   web_search_mode: live               # optional — disabled | cached | live
 
@@ -126,6 +129,21 @@ The defaults are `deepseek/deepseek-v4-pro-0813` for review mode and
 provider — e.g. `openai/gpt-5.4`, `google/gemini-2.5-pro`,
 `anthropic/claude-sonnet-4.5` — change the slug on the matching `model:` line
 and commit. The next run uses the new model.
+
+### Multiple Reviewers ("the fight")
+
+Set `review.models` (a list) — or `DOTBOT_REVIEW_MODELS` as a comma-separated
+env var — to run additional review models alongside the primary `review.model`.
+Each reviewer runs the full pipeline in sequence:
+
+- posts its own inline findings and its own PR summary, tagged with its model
+  and reasoning effort (the summary footer line and the metadata thumbprint).
+- sees the earlier reviewers' posted comments as prior-context, so a later
+  model can carry them forward, agree, or push back — a built-in disagreement
+  pass. Configure two strong models and let them argue about the diff.
+
+Review state (resume threads, SHA-delta scope, cache keys) is isolated per
+model, so changing the roster won't reuse the wrong review.
 
 Override the file path with the `config_path` action input or
 `OPENROUTER_REVIEW_CONFIG` env var (e.g. `ci/openrouter-models.yml`). Per-call

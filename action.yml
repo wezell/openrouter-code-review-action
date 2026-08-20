@@ -27,6 +27,10 @@ inputs:
     description: "Model to use (e.g., gpt-5, gpt-4.1-mini)"
     required: false
     default: "gpt-5.4"
+  review_models:
+    description: "Comma-separated extra review models to run alongside the primary reviewer (multi-model rosters)"
+    required: false
+    default: ""
   reasoning_effort:
     description: "Reasoning effort: minimal | low | medium | high"
     required: false
@@ -135,6 +139,7 @@ runs:
         # Config
         DOTBOT_MODE: ${{ inputs.mode }}
         DOTBOT_MODEL: ${{ inputs.model }}
+        DOTBOT_REVIEW_MODELS: ${{ inputs.review_models }}
         # In-repo model config — single edit swaps the review/act model.
         OPENROUTER_REVIEW_CONFIG: ${{ inputs.config_path }}
         DOTBOT_REASONING_EFFORT: ${{ inputs.reasoning_effort }}

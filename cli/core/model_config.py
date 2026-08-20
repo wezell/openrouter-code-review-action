@@ -44,7 +44,7 @@ DEFAULT_ACT_MODEL = "anthropic/claude-opus-4.7"
 
 _VALID_REASONING_EFFORTS = frozenset({"minimal", "low", "medium", "high"})
 _VALID_WEB_SEARCH_MODES = frozenset({"disabled", "cached", "live"})
-_KNOWN_MODE_KEYS = frozenset({"model", "reasoning_effort", "web_search_mode"})
+_KNOWN_MODE_KEYS = frozenset({"model", "models", "reasoning_effort", "web_search_mode"})
 
 
 @dataclass(frozen=True)
@@ -54,9 +54,15 @@ class ModelConfig:
     Each field is the *effective* value after applying defaults — callers can
     use these values directly without re-checking for ``None``. ``source_path``
     is ``None`` when no config file was found and pure defaults were used.
+
+    ``review_models`` is the optional multi-model reviewer roster: additional
+    model slugs that run alongside ``review_model`` so two (or more) models
+    review the same PR and comment on each other's findings. It is empty when
+    only the single configured review model should run.
     """
 
     review_model: str = DEFAULT_REVIEW_MODEL
+    review_models: tuple[str, ...] = ()
     act_model: str = DEFAULT_ACT_MODEL
     review_reasoning_effort: str | None = None
     act_reasoning_effort: str | None = None
@@ -124,6 +130,7 @@ def load_model_config(
 
     return ModelConfig(
         review_model=review_block.get("model") or DEFAULT_REVIEW_MODEL,
+        review_models=tuple(review_block.get("models") or ()),
         act_model=act_block.get("model") or DEFAULT_ACT_MODEL,
         review_reasoning_effort=review_block.get("reasoning_effort"),
         act_reasoning_effort=act_block.get("reasoning_effort"),
@@ -132,7 +139,7 @@ def load_model_config(
     )
 
 
-def _coerce_mode_block(value: Any, mode: str, source: Path) -> dict[str, str]:
+def _coerce_mode_block(value: Any, mode: str, source: Path) -> dict[str, Any]:
     if value is None:
         return {}
     if not isinstance(value, dict):
@@ -146,7 +153,7 @@ def _coerce_mode_block(value: Any, mode: str, source: Path) -> dict[str, str]:
             f"Allowed: {', '.join(sorted(_KNOWN_MODE_KEYS))}"
         )
 
-    block: dict[str, str] = {}
+    block: dict[str, Any] = {}
 
     model = value.get("model")
     if model is not None:
@@ -155,6 +162,27 @@ def _coerce_mode_block(value: Any, mode: str, source: Path) -> dict[str, str]:
                 f"OpenRouter model config at {source}: '{mode}.model' must be a non-empty string"
             )
         block["model"] = model.strip()
+
+    models = value.get("models")
+    if models is not None:
+        if mode != "review":
+            raise ConfigurationError(
+                f"OpenRouter model config at {source}: 'models' is only valid under "
+                f"the 'review' block (found under '{mode}')"
+            )
+        if not isinstance(models, list) or not models:
+            raise ConfigurationError(
+                f"OpenRouter model config at {source}: 'review.models' must be a non-empty list"
+            )
+        normalized_models: list[str] = []
+        for raw_model in models:
+            if not isinstance(raw_model, str) or not raw_model.strip():
+                raise ConfigurationError(
+                    f"OpenRouter model config at {source}: 'review.models' entries "
+                    "must be non-empty strings"
+                )
+            normalized_models.append(raw_model.strip())
+        block["models"] = tuple(normalized_models)
 
     reasoning = value.get("reasoning_effort")
     if reasoning is not None:
