@@ -974,9 +974,12 @@ class ReviewWorkflow:
 
         print(f"Running dotbot ({model}) to generate review findings...", flush=True)
 
+        effective_model = (
+            self.config.model_name if self.config.model_provider == "openai" else model
+        )
         output = self.model_client.execute_structured(
             prompt,
-            model_name=model,
+            model_name=effective_model,
             sandbox_mode="danger-full-access",
             output_schema=REVIEW_OUTPUT_SCHEMA,
             schema_prompt=schema_prompt,
@@ -1002,10 +1005,10 @@ class ReviewWorkflow:
             summary,
             posting_outcome,
             reviewed_head_sha=head_sha,
-            model=model,
+            model=effective_model,
             reasoning_effort=self.config.reasoning_effort or "medium",
         )
-        self._publish_summary(pr, summary_text, model=model)
+        self._publish_summary(pr, summary_text, model=effective_model)
 
         return ReviewWorkflowResult(
             review=parsed_result,

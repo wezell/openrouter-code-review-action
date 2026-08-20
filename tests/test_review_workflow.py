@@ -258,6 +258,7 @@ def _make_config(
     dry_run: bool = False,
     model_provider: str = "openrouter",
     review_models: tuple[str, ...] = (),
+    model_name: str = "gpt-codex-model",
 ) -> ReviewConfig:
     return ReviewConfig(
         github_token="token",
@@ -266,6 +267,7 @@ def _make_config(
         mode="review",
         model_provider=model_provider,
         dry_run=dry_run,
+        model_name=model_name,
         review_models=review_models,
         repo_root=tmp_path,
     )
@@ -1556,6 +1558,46 @@ def test_process_review_runs_each_model_in_roster_and_posts_per_model_summary(
     assert f"- Reviewer: {DEFAULT_REVIEW_MODEL}" in created[0]
     assert "- Reviewer: openai/gpt-5" in created[1]
     assert "- Reviewer: google/gemini-2.5-pro" in created[2]
+    assert result.summary.overall_correctness == "patch is correct"
+
+
+def test_process_review_openai_provider_uses_config_model_name_not_roster(
+    tmp_path: Path,
+) -> None:
+    pr = _FakePR()
+    github_client = _FakeGitHubClient(pr)
+    model_client = _FakeCodexClient(
+        json.dumps(
+            {
+                "overall_correctness": "patch is correct",
+                "overall_explanation": "",
+                "overall_confidence_score": 0.8,
+                "carried_forward": [],
+                "findings": [],
+            }
+        )
+    )
+    workflow = ReviewWorkflow(
+        # openai provider must keep using config.model_name (the Codex client
+        # contract), not the review-model roster.
+        _make_config(
+            tmp_path,
+            model_provider="openai",
+            review_models=("openai/gpt-5",),
+            model_name="gpt-codex-model",
+        ),
+        github_client=cast(Any, github_client),
+        model_client=cast(Any, model_client),
+    )
+
+    result = workflow.process_review(7)
+
+    assert [call["model_name"] for call in model_client.calls] == [
+        "gpt-codex-model",
+        "gpt-codex-model",
+    ]
+    assert "- Reviewer: gpt-codex-model" in pr.as_issue().created_comments[0]
+    assert "- Reviewer: gpt-codex-model" in pr.as_issue().created_comments[1]
     assert result.summary.overall_correctness == "patch is correct"
 
 
