@@ -23,7 +23,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - name: Cut next patch release
+      - name: Cut next release (feat -> minor, otherwise patch)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           latest=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -1 || true)
@@ -31,11 +33,18 @@ jobs:
             echo "No existing version tags; skipping auto-release."
             exit 0
           fi
+          has_feat=$(git log "$latest"..HEAD --pretty=%s | grep -cE '^feat(\([^)]*\))?:' || true)
           major=$(echo "$latest" | sed -E 's/^v([0-9]+).*/\1/')
           minor=$(echo "$latest" | sed -E 's/^v[0-9]+\.([0-9]+).*/\1/')
           patch=$(echo "$latest" | sed -E 's/^v[0-9]+\.[0-9]+\.([0-9]+).*/\1/')
-          next="v${major}.${minor}.$((patch + 1))"
-          echo "Cutting ${next} (prior ${latest})"
+          if [ "$has_feat" -gt 0 ]; then
+            minor=$((minor + 1))
+            patch=0
+          else
+            patch=$((patch + 1))
+          fi
+          next="v${major}.${minor}.${patch}"
+          echo "Cutting ${next} (prior ${latest}, feat=${has_feat})"
           git tag -a "$next" -m "dotbot code review ${next}"
           git push origin "$next"
           gh release create "$next" \
